@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { blobUploadRoute } from './routes/blobUpload'
-import { filesRoute } from './routes/files'
-import { healthRoute } from './routes/health'
-import { jobsRoute } from './routes/jobs'
-import { outlineExportRoute } from './routes/outlineExport'
+import { blobUploadRoute } from './routes/blobUpload.js'
+import { filesRoute } from './routes/files.js'
+import { healthRoute } from './routes/health.js'
+import { jobsRoute } from './routes/jobs.js'
+import { outlineExportRoute } from './routes/outlineExport.js'
 
 export const app = new Hono()
 

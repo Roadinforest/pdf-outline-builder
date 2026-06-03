@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { createBlobClientUploadResponse, createLocalUpload } from '../services/blobStorage'
+import { createBlobClientUploadResponse, createLocalUpload } from '../services/blobStorage.js'
 
 export const blobUploadRoute = new Hono()
 

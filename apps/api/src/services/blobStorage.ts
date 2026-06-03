@@ -4,7 +4,7 @@ import path from 'node:path'
 import { put } from '@vercel/blob'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { MAX_PDF_SIZE_BYTES } from '@pdf-outline-builder/shared'
-import { getConfiguredBaseUrl, getStorageMode } from '../lib/env'
+import { getConfiguredBaseUrl, getStorageMode } from '../lib/env.js'
 
 const localStorageRoot = path.resolve(process.cwd(), '.local-storage')
 

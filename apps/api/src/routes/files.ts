@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { readLocalStoredFile } from '../services/blobStorage'
+import { readLocalStoredFile } from '../services/blobStorage.js'
 
 export const filesRoute = new Hono()
 

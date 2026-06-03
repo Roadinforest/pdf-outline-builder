@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { jobStore } from '../services/jobStore'
+import { jobStore } from '../services/jobStore.js'
 
 export const jobsRoute = new Hono()
 

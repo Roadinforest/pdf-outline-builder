@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { getStorageMode } from '../lib/env'
+import { getStorageMode } from '../lib/env.js'
 
 export const healthRoute = new Hono()
 

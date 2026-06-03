@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
-import { applyOutlineToPdf } from '../services/exportPdf'
-import { jobStore } from '../services/jobStore'
-import { readSourcePdf, uploadOutlinedPdf, isAllowedSourceUrl } from '../services/blobStorage'
-import { validateExportRequest } from '../services/validators'
+import { applyOutlineToPdf } from '../services/exportPdf.js'
+import { jobStore } from '../services/jobStore.js'
+import { readSourcePdf, uploadOutlinedPdf, isAllowedSourceUrl } from '../services/blobStorage.js'
+import { validateExportRequest } from '../services/validators.js'
 
 export const outlineExportRoute = new Hono()
 
