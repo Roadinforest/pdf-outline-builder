@@ -1,6 +1,9 @@
-const configuredBase = import.meta.env.VITE_API_BASE_URL?.trim()
+const localApiBaseUrl = 'http://localhost:8787'
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 
-export const apiBaseUrl = configuredBase && configuredBase.length > 0 ? configuredBase.replace(/\/$/, '') : 'http://localhost:8787'
+export const apiBaseUrl = configuredApiBaseUrl && configuredApiBaseUrl.length > 0
+  ? configuredApiBaseUrl.replace(/\/+$/, '')
+  : localApiBaseUrl
 
 export function apiUrl(pathname: string) {
   const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`

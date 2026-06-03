@@ -6,9 +6,36 @@ import { healthRoute } from './routes/health.js'
 import { jobsRoute } from './routes/jobs.js'
 import { outlineExportRoute } from './routes/outlineExport.js'
 
+const localhostOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i
+const vercelOriginPattern = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i
+const configuredCorsOrigins = new Set(
+  (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+)
+
+function isAllowedCorsOrigin(origin: string) {
+  if (configuredCorsOrigins.has(origin)) {
+    return true
+  }
+
+  return localhostOriginPattern.test(origin) || vercelOriginPattern.test(origin)
+}
+
 export const app = new Hono()
 
-app.use('/api/*', cors())
+app.use('/api/*', cors({
+  origin: (origin) => {
+    if (!origin) {
+      return '*'
+    }
+
+    return isAllowedCorsOrigin(origin) ? origin : ''
+  },
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'OPTIONS'],
+}))
 
 app.get('/', (c) => {
   return c.json({

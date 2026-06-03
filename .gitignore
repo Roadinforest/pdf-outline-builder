@@ -6,3 +6,4 @@ dist
 .local-storage
 coverage
 *.tsbuildinfo
+apps/web/.env.example
