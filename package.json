@@ -1,0 +1,15 @@
+{
+  "name": "pdf-outline-builder",
+  "private": true,
+  "packageManager": "pnpm@10.27.0",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev:api": "pnpm --filter @pdf-outline-builder/api dev",
+    "dev:web": "pnpm --filter @pdf-outline-builder/web dev",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

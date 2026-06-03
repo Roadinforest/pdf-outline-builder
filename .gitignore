@@ -1,0 +1,9 @@
+node_modules
+.DS_Store
+dist
+.turbo
+.vercel
+.local-storage
+coverage
+pnpm-lock.yaml
+*.tsbuildinfo
