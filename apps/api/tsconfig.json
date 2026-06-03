@@ -10,7 +10,7 @@
     "rootDir": ".",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
-  "include": ["src/**/*", "api/**/*"],
+  "include": ["src/**/*"],
   "references": [
     {
       "path": "../../packages/shared"
