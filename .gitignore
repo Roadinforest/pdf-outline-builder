@@ -5,5 +5,4 @@ dist
 .vercel
 .local-storage
 coverage
-pnpm-lock.yaml
 *.tsbuildinfo
