@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { createBlobClientUploadResponse, createLocalUpload } from '../services/blobStorage.js'
+import { getStorageMode } from '../lib/env.js'
 
 export const blobUploadRoute = new Hono()
 
@@ -16,6 +17,12 @@ blobUploadRoute.post('/upload', async (c) => {
 })
 
 blobUploadRoute.post('/upload/local', async (c) => {
+  if (getStorageMode() !== 'local') {
+    return c.json({
+      error: 'Local uploads are only available in local development. Configure BLOB_READ_WRITE_TOKEN for deployed environments.',
+    }, 503)
+  }
+
   const body = await c.req.parseBody()
   const file = body.file
 

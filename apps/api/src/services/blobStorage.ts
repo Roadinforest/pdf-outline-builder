@@ -90,6 +90,10 @@ export async function uploadOutlinedPdf(request: Request, fileName: string, byte
     }
   }
 
+  if (getStorageMode() !== 'local') {
+    throw new Error('Blob storage is not configured for this environment.')
+  }
+
   return storeLocalFile(request, 'exports', fileName, bytes)
 }
 

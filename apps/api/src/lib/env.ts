@@ -9,6 +9,14 @@ export function getConfiguredBaseUrl(request: Request) {
   return requestUrl.origin
 }
 
+function isRunningOnVercel() {
+  return process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV)
+}
+
 export function getStorageMode() {
-  return process.env.BLOB_READ_WRITE_TOKEN ? 'blob' : 'local'
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    return 'blob'
+  }
+
+  return isRunningOnVercel() ? 'unavailable' : 'local'
 }

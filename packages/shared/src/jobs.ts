@@ -22,7 +22,7 @@ export const createExportResponseSchema = z.object({
 export const healthResponseSchema = z.object({
   service: z.literal('pdf-outline-api'),
   status: z.literal('ok'),
-  storage: z.enum(['blob', 'local']),
+  storage: z.enum(['blob', 'local', 'unavailable']),
 })
 
 export type CreateExportResponse = z.infer<typeof createExportResponseSchema>

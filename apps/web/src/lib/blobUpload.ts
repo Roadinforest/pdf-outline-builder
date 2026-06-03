@@ -1,7 +1,11 @@
 import { upload } from '@vercel/blob/client'
 import { apiUrl } from './api'
 
-let storageModePromise: Promise<'blob' | 'local'> | null = null
+type StorageMode = 'blob' | 'local' | 'unavailable'
+
+const missingBlobConfigurationMessage = 'Uploads are unavailable because the API is deployed without Vercel Blob configured. Add BLOB_READ_WRITE_TOKEN to the API project and redeploy.'
+
+let storageModePromise: Promise<StorageMode> | null = null
 
 function createUploadPathname(fileName: string) {
   const now = new Date()
@@ -18,10 +22,15 @@ async function getStorageMode() {
           throw new Error(`Health check failed with status ${response.status}.`)
         }
 
-        const body = await response.json() as { storage?: 'blob' | 'local' }
-        return body.storage === 'blob' ? 'blob' : 'local'
+        const body = await response.json() as { storage?: StorageMode }
+
+        if (body.storage === 'blob' || body.storage === 'local') {
+          return body.storage
+        }
+
+        return 'unavailable'
       })
-      .catch(() => 'local')
+      .catch(() => 'unavailable')
   }
 
   return storageModePromise
@@ -58,6 +67,10 @@ export async function uploadSourcePdf(file: File) {
     return uploadSourcePdfLocally(file)
   }
 
+  if (storageMode === 'unavailable') {
+    throw new Error(missingBlobConfigurationMessage)
+  }
+
   try {
     const result = await upload(pathname, file, {
       access: 'public',
@@ -69,14 +82,6 @@ export async function uploadSourcePdf(file: File) {
       url: result.url,
     }
   } catch (error) {
-    const sourceError = error instanceof Error ? error.message : 'Blob client upload failed.'
-
-    try {
-      const fallbackResult = await uploadSourcePdfLocally(file)
-      return fallbackResult
-    } catch (fallbackError) {
-      const detail = fallbackError instanceof Error ? fallbackError.message : 'Local upload fallback failed.'
-      throw new Error(`${sourceError} ${detail}`)
-    }
+    throw new Error(error instanceof Error ? error.message : 'Blob client upload failed.')
   }
 }
