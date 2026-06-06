@@ -1,19 +1,16 @@
 <claude-mem-context>
 # Memory Context
 
-# [pdf-outline-builder] recent context, 2026-06-06 6:50pm GMT+8
+# [pdf-outline-builder] recent context, 2026-06-06 7:06pm GMT+8
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (29,081t read) | 0t work
+Stats: 50 obs (29,248t read) | 0t work
 
 ### Jun 6, 2026
-1001 2:22p ⚖️ User requested adding LangChain + Minimax LLM to reorder extracted PDF outlines
-1002 2:23p 🔵 Baseline confirmed: no LLM/LangChain dependencies or config exist in the codebase
-1003 " 🔵 Export validators enforce outline level progression and page bounds before PDF rewrite
-1004 " 🔵 Web app export flow: upload → POST export → poll job → download → reload
+1004 2:23p 🔵 Web app export flow: upload → POST export → poll job → download → reload
 1005 " 🔵 Job status schema defines 4 states and provides a polling-friendly response shape
 1006 " 🔵 Shared package is minimal: just zod, with compiled dist output for downstream consumption
 1007 " 🔵 Client-side blob upload auto-detects storage mode via /api/health and falls back through blob → local → unavailable
@@ -69,5 +66,8 @@ S897 Fix the live "AI refinement failed: the model did not return a JSON object"
 1048 6:33p 🔵 LLM refineOutline fails: structured output path null-length crash, JSON-text fallback not parsed
 1049 6:34p 🟣 User requests: load AI-refined outline into Outline tree editor
 1050 6:45p 🔴 refineOutline: unwrap nested-JSON content, balance braces correctly, cap LLM output
-1051 " 🔵 Frontend "AI 精炼 → outline tree editor" wiring already exists in PdfOutlinePreviewPage.tsx
+1051 " 🔵 Frontend "AI Analyse → outline tree editor" wiring already exists in PdfOutlinePreviewPage.tsx
+1052 6:51p ✅ User requested optimization of recent changes without breaking functionality
+1053 " ✅ User requested AI-parse loading state that blocks other UI actions
+1054 " 🟣 AI-refine loading overlay blocks the page during LLM refinement
 </claude-mem-context>

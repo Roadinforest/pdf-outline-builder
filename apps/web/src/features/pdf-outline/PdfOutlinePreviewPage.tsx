@@ -7,13 +7,16 @@ import type {
   RefineResponse,
 } from '@pdf-outline-builder/shared'
 import {
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Download,
+  Info,
   FileJson,
   FileUp,
   Plus,
   RefreshCw,
+  ShieldAlert,
   Send,
   Sparkles,
   Trash2,
@@ -328,6 +331,59 @@ function ParsingOverlay({
   )
 }
 
+function BlockingOverlay({
+  description,
+  title,
+}: {
+  description: string
+  title: string
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/72 backdrop-blur-md">
+      <div className="mx-6 w-full max-w-lg rounded-[32px] border border-zinc-200/80 bg-white/95 px-7 py-9 text-center shadow-xl">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <RefreshCw className="size-7 animate-spin" />
+        </div>
+        <h3 className="mt-5 text-xl font-semibold text-zinc-950">{title}</h3>
+        <p className="mt-3 text-sm leading-6 text-zinc-600">{description}</p>
+        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-zinc-400">Please wait</p>
+      </div>
+    </div>
+  )
+}
+
+type NotificationTone = 'success' | 'error'
+
+function FloatingNotification({
+  message,
+  tone,
+}: {
+  message: string
+  tone: NotificationTone
+}) {
+  const isSuccess = tone === 'success'
+
+  return (
+    <div className="fixed right-6 top-24 z-50 w-[min(420px,calc(100vw-3rem))] rounded-[28px] border border-zinc-200/80 bg-white/95 px-5 py-4 shadow-xl backdrop-blur-md">
+      <div className="flex items-start gap-3">
+        <div
+          className={`mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full ${
+            isSuccess ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+          }`}
+        >
+          {isSuccess ? <CheckCircle2 className="size-5" /> : <ShieldAlert className="size-5" />}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-zinc-950">
+            {isSuccess ? 'AI refinement complete' : 'AI refinement failed'}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-zinc-600">{message}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function getIndentLabel(level: number) {
   if (level <= 1) {
     return 'Root'
@@ -529,6 +585,8 @@ export function PdfOutlinePreviewPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [isCopyingPayload, setIsCopyingPayload] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
+  const [hasAiRefinedOutline, setHasAiRefinedOutline] = useState(false)
+  const [notification, setNotification] = useState<{ message: string; tone: NotificationTone } | null>(null)
   const [lastExportDownloadUrl, setLastExportDownloadUrl] = useState('')
   const [lastExportJobId, setLastExportJobId] = useState('')
   const [sourceBlobUrl, setSourceBlobUrl] = useState('')
@@ -540,6 +598,20 @@ export function PdfOutlinePreviewPage() {
       }
     }
   }, [documentUrl])
+
+  useEffect(() => {
+    if (!notification) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setNotification(null)
+    }, 3200)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [notification])
 
   const collapsedNodeSet = useMemo(() => new Set(collapsedNodeIds), [collapsedNodeIds])
   const expandedNodeSet = useMemo(() => new Set(expandedNodeIds), [expandedNodeIds])
@@ -614,11 +686,15 @@ export function PdfOutlinePreviewPage() {
       const nextDetectedNodes = cloneNodes(parsed.suggestedOutline)
       const nextPreset: OutlinePreset = parsed.embeddedOutline.length > 0 ? 'embedded' : 'detected'
 
+      setHasAiRefinedOutline(false)
+      setNotification(null)
       setDetectedOutlineNodes(nextDetectedNodes)
       applyPresetState(nextPreset, parsed, nextDetectedNodes)
     } catch (error) {
       setParseError(error instanceof Error ? error.message : 'Failed to parse the PDF file.')
       setParsedDocument(null)
+      setHasAiRefinedOutline(false)
+      setNotification(null)
       setDetectedOutlineNodes([])
       setOutlineNodes([])
       setSourceBlobUrl('')
@@ -902,10 +978,15 @@ export function PdfOutlinePreviewPage() {
 
       if (refined.length === 0) {
         setExportMessage('The LLM returned an empty outline. The original list is preserved.')
+        setNotification({
+          message: 'The AI returned an empty outline, so the current tree was kept as-is.',
+          tone: 'error',
+        })
         return
       }
 
       const nextDetectedNodes = cloneNodes(refined)
+      setHasAiRefinedOutline(true)
       setDetectedOutlineNodes(nextDetectedNodes)
       applyPresetState('detected', parsedDocument, nextDetectedNodes)
       const dropped = outlineNodes.length - refined.length
@@ -913,7 +994,18 @@ export function PdfOutlinePreviewPage() {
         ? `AI refinement complete (${refined.length} kept${dropped > 0 ? `, ${dropped} dropped` : ''}). ${response.reasoning}`
         : `AI refinement complete (${refined.length} kept${dropped > 0 ? `, ${dropped} dropped` : ''}).`
       setExportMessage(summary)
+      setNotification({
+        message: dropped > 0
+          ? `Updated the outline tree with ${refined.length} AI-cleaned headings and removed ${dropped} lower-quality entries.`
+          : `Updated the outline tree with ${refined.length} AI-cleaned headings.`,
+        tone: 'success',
+      })
     } catch (error) {
+      setHasAiRefinedOutline(false)
+      setNotification({
+        message: error instanceof Error ? error.message : 'The outline could not be refined this time.',
+        tone: 'error',
+      })
       setExportMessage(
         error instanceof Error
           ? `${error.message} The original outline is unchanged.`
@@ -990,41 +1082,42 @@ export function PdfOutlinePreviewPage() {
   }
 
   return (
-    <PreviewLayout
-      title="PDF Outline Studio"
-      actions={
-        <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            onChange={handleFileSelection}
-          />
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <FileUp />
-            Upload PDF
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => void handleRefineOutline()}
-            disabled={isRefining || outlineNodes.length === 0}
-          >
-            <Sparkles className={isRefining ? 'animate-pulse' : undefined} />
-            {isRefining ? 'Refining...' : 'AI 精炼'}
-          </Button>
-          <Button variant="outline" onClick={handleDownloadPayload} disabled={!exportPayload}>
-            <FileJson />
-            Download Payload
-          </Button>
-          <Button onClick={handleExport} disabled={!exportPayload || isExporting || isUploading}>
-            <Send />
-            {isUploading ? 'Uploading...' : isExporting ? 'Exporting & Loading...' : 'Export & Load PDF'}
-          </Button>
-        </>
-      }
-    >
-      <div className="h-full overflow-auto px-6 py-6">
+    <>
+      <PreviewLayout
+        title="PDF Outline Studio"
+        actions={
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={handleFileSelection}
+            />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isRefining}>
+              <FileUp />
+              Upload PDF
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => void handleRefineOutline()}
+              disabled={isRefining || outlineNodes.length === 0}
+            >
+              <Sparkles className={isRefining ? 'animate-pulse' : undefined} />
+              {isRefining ? 'Refining...' : 'AI Analyse'}
+            </Button>
+            <Button variant="outline" onClick={handleDownloadPayload} disabled={!exportPayload || isRefining}>
+              <FileJson />
+              Download Payload
+            </Button>
+            <Button onClick={handleExport} disabled={!exportPayload || isExporting || isUploading || isRefining}>
+              <Send />
+              {isUploading ? 'Uploading...' : isExporting ? 'Exporting & Loading...' : 'Export & Load PDF'}
+            </Button>
+          </>
+        }
+      >
+        <div className="h-full overflow-auto px-6 py-6" aria-busy={isRefining}>
         <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
           <section className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -1038,13 +1131,13 @@ export function PdfOutlinePreviewPage() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isRefining}>
                   <FileUp />
                   Choose a PDF
                 </Button>
                 {selectedFile ? (
-                  <Button variant="outline" onClick={() => void loadFile(selectedFile)} disabled={isParsing}>
-                    <RefreshCw className={isParsing ? 'animate-spin' : undefined} />
+                  <Button variant="outline" onClick={() => void loadFile(selectedFile)} disabled={isParsing || isRefining}>
+                    <RefreshCw className={isParsing || isRefining ? 'animate-spin' : undefined} />
                     Re-run detection
                   </Button>
                 ) : null}
@@ -1125,7 +1218,19 @@ export function PdfOutlinePreviewPage() {
                   <div className="border-b border-zinc-200/70 px-5 py-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-lg font-semibold text-zinc-950">Outline tree editor</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-semibold text-zinc-950">Outline tree editor</h3>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
+                              hasAiRefinedOutline
+                                ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-200'
+                                : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'
+                            }`}
+                          >
+                            <Info className="size-3.5" />
+                            AI Version
+                          </span>
+                        </div>
                         <p className="mt-1 text-sm text-zinc-600">
                           Edit the hierarchy directly as a tree. Reordering keeps whole branches together.
                         </p>
@@ -1302,7 +1407,15 @@ export function PdfOutlinePreviewPage() {
             </section>
           )}
         </div>
-      </div>
-    </PreviewLayout>
+        </div>
+      </PreviewLayout>
+      {isRefining ? (
+        <BlockingOverlay
+          title="AI is refining the outline"
+          description="Filtering headings, cleaning titles, and rebuilding the detected outline. Other actions are temporarily disabled to keep the editor state consistent."
+        />
+      ) : null}
+      {notification ? <FloatingNotification message={notification.message} tone={notification.tone} /> : null}
+    </>
   )
 }

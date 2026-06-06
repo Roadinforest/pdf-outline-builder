@@ -1,7 +1,7 @@
-# LangChain × MiniMax 大纲精炼
+# LangChain × MiniMax 大纲Analyse
 
 > 让 LLM 帮我们把浏览器启发式检测出来的大纲"过滤 + 清洗"，再交还给用户编辑/导出。
-> 该特性是**手动触发**（UI 顶部 `AI 精炼` 按钮），不会自动消耗 token。
+> 该特性是**手动触发**（UI 顶部 `AI Analyse` 按钮），不会自动消耗 token。
 
 ---
 
@@ -10,7 +10,7 @@
 | 模块 | 关注点 |
 |---|---|
 | 前端 `pdfjs-dist` | 解析 PDF、按字号/编号/字体/位置多特征打分，得到 `detected` 候选 |
-| 前端 `PdfOutlinePreviewPage` | 展示 / 编辑 / 增删 / 拖拽；点击 `AI 精炼` 才把当前 outline 整组送后端 |
+| 前端 `PdfOutlinePreviewPage` | 展示 / 编辑 / 增删 / 拖拽；点击 `AI Analyse` 才把当前 outline 整组送后端 |
 | 后端 `/api/outline/refine` | 接收 candidates，调用 LangChain + MiniMax，返回清洗后的 outline |
 | 前端 | 用返回的 outline **整体替换** `outlineNodes`（用户后续仍可继续编辑） |
 | 后端 `/api/outline/export` | 不变，继续把最终 outline 写回 PDF |
@@ -23,7 +23,7 @@ LLM **不**写 PDF，**不**调 Vercel Blob，**不**持久化任何状态。每
 
 ```
 [Builder 页面]
-  点击 "AI 精炼" 按钮
+  点击 "AI Analyse" 按钮
       ↓
   handleRefineOutline()
       ↓ 拿当前 outlineNodes
@@ -179,7 +179,7 @@ if (!config) return 503
   disabled={isRefining || outlineNodes.length === 0}
 >
   <Sparkles className={isRefining ? 'animate-pulse' : undefined} />
-  {isRefining ? 'Refining...' : 'AI 精炼'}
+  {isRefining ? 'Refining...' : 'AI Analyse'}
 </Button>
 ```
 
@@ -190,11 +190,11 @@ if (!config) return 503
 | `false` | 空闲，可点 |
 | `true` | 请求中，按钮禁用 + Sparkles 动画 + `setExportMessage('Asking the LLM...')` |
 
-成功后 `setExportMessage` 显示精炼摘要（含 dropped 数量，可选 reason）。失败显示错误信息并保留原数据。
+成功后 `setExportMessage` 显示Analyse摘要（含 dropped 数量，可选 reason）。失败显示错误信息并保留原数据。
 
 ### 5.4 替换策略
 
-精炼成功后：
+Analyse成功后：
 
 ```ts
 setOutlineNodes(refined)              // 整体替换
@@ -254,7 +254,7 @@ Vercel Hobby 函数默认 10s，Pro 60s。`maxRetries: 1` + 400 候选 + 单次�
 | 巨型 PDF（>400 候选） | `reasoning` 出现 "Truncated N low-confidence candidates" |
 | LLM 5xx | UI 报错 "AI refinement failed..."，原数据保留 |
 | LLM 抽风返回空 | `outline: []` → UI "The LLM returned an empty outline. The original list is preserved." |
-| 二次精炼 | 精炼后再点一次，按钮正常工作，id 走 `refined-N` |
+| 二次Analyse | Analyse后再点一次，按钮正常工作，id 走 `refined-N` |
 
 ---
 
