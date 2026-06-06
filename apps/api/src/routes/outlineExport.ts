@@ -1,12 +1,15 @@
 import { Hono } from 'hono'
+import { refineRequestSchema } from '@pdf-outline-builder/shared'
 import { applyOutlineToPdf } from '../services/exportPdf.js'
 import { jobStore } from '../services/jobStore.js'
 import { readSourcePdf, uploadOutlinedPdf, isAllowedSourceUrl } from '../services/blobStorage.js'
 import { validateExportRequest } from '../services/validators.js'
+import { refineOutlineWithLLM } from '../services/refineOutline.js'
+import { getMiniMaxConfig } from '../lib/env.js'
 
-export const outlineExportRoute = new Hono()
+export const outlineRoute = new Hono()
 
-outlineExportRoute.post('/export', async (c) => {
+outlineRoute.post('/export', async (c) => {
   const payload = validateExportRequest(await c.req.json())
 
   if (!isAllowedSourceUrl(c.req.raw, payload.sourceBlobUrl)) {
@@ -48,5 +51,43 @@ outlineExportRoute.post('/export', async (c) => {
       },
       500,
     )
+  }
+})
+
+outlineRoute.post('/refine', async (c) => {
+  let body: unknown
+
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body.' }, 400)
+  }
+
+  const parsed = refineRequestSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message ?? 'Invalid refine payload.' }, 400)
+  }
+
+  if (!getMiniMaxConfig()) {
+    return c.json(
+      {
+        error: 'AI refinement is disabled. Set MINIMAX_API_KEY in the API environment to enable it.',
+      },
+      503,
+    )
+  }
+
+  try {
+    const result = await refineOutlineWithLLM({
+      candidates: parsed.data.candidates,
+      fileName: parsed.data.fileName,
+      instruction: parsed.data.instruction,
+    })
+
+    return c.json(result)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'AI refinement failed.'
+    return c.json({ error: message }, 502)
   }
 })

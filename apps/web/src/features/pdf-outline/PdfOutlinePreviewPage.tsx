@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
-import type { CreateExportResponse, ExportJob } from '@pdf-outline-builder/shared'
+import type {
+  CreateExportResponse,
+  ExportJob,
+  RefineCandidate,
+  RefineResponse,
+} from '@pdf-outline-builder/shared'
 import {
   ChevronDown,
   ChevronRight,
@@ -15,7 +20,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PreviewLayout } from '@/components/PreviewLayout'
-import { apiUrl, readJsonOrThrow } from '@/lib/api'
+import { apiUrl, postJson, readJsonOrThrow } from '@/lib/api'
 import { uploadSourcePdf } from '@/lib/blobUpload'
 import { parsePdfOutline, type ParsedPdfDocument, type PdfOutlineNode } from './pdfOutline'
 
@@ -511,6 +516,7 @@ export function PdfOutlinePreviewPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentUrl, setDocumentUrl] = useState('')
   const [parsedDocument, setParsedDocument] = useState<ParsedPdfDocument | null>(null)
+  const [detectedOutlineNodes, setDetectedOutlineNodes] = useState<PdfOutlineNode[]>([])
   const [outlineNodes, setOutlineNodes] = useState<PdfOutlineNode[]>([])
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<string[]>([])
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>([])
@@ -522,6 +528,7 @@ export function PdfOutlinePreviewPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isCopyingPayload, setIsCopyingPayload] = useState(false)
+  const [isRefining, setIsRefining] = useState(false)
   const [lastExportDownloadUrl, setLastExportDownloadUrl] = useState('')
   const [lastExportJobId, setLastExportJobId] = useState('')
   const [sourceBlobUrl, setSourceBlobUrl] = useState('')
@@ -542,8 +549,8 @@ export function PdfOutlinePreviewPage() {
       return 0
     }
 
-    return mergeNodes(parsedDocument.embeddedOutline, parsedDocument.suggestedOutline).length
-  }, [parsedDocument])
+    return mergeNodes(parsedDocument.embeddedOutline, detectedOutlineNodes).length
+  }, [detectedOutlineNodes, parsedDocument])
   const exportPayload = useMemo(() => {
     if (!parsedDocument) {
       return null
@@ -558,6 +565,29 @@ export function PdfOutlinePreviewPage() {
 
   function resetExpandedNodes() {
     setExpandedNodeIds([])
+  }
+
+  function resetTreeUiState() {
+    resetCollapsedNodes()
+    resetExpandedNodes()
+  }
+
+  function buildPresetNodes(preset: OutlinePreset, document: ParsedPdfDocument, detectedNodes: PdfOutlineNode[]) {
+    if (preset === 'embedded') {
+      return cloneNodes(document.embeddedOutline)
+    }
+
+    if (preset === 'merged') {
+      return mergeNodes(document.embeddedOutline, detectedNodes)
+    }
+
+    return cloneNodes(detectedNodes)
+  }
+
+  function applyPresetState(preset: OutlinePreset, document: ParsedPdfDocument, detectedNodes: PdfOutlineNode[]) {
+    setActivePreset(preset)
+    setOutlineNodes(buildPresetNodes(preset, document, detectedNodes))
+    resetTreeUiState()
   }
 
   async function loadFile(file: File) {
@@ -581,23 +611,18 @@ export function PdfOutlinePreviewPage() {
       })
       setSelectedFile(file)
       setParsedDocument(parsed)
-      resetCollapsedNodes()
-      resetExpandedNodes()
+      const nextDetectedNodes = cloneNodes(parsed.suggestedOutline)
+      const nextPreset: OutlinePreset = parsed.embeddedOutline.length > 0 ? 'embedded' : 'detected'
 
-      if (parsed.embeddedOutline.length > 0) {
-        setActivePreset('embedded')
-        setOutlineNodes(cloneNodes(parsed.embeddedOutline))
-      } else {
-        setActivePreset('detected')
-        setOutlineNodes(cloneNodes(parsed.suggestedOutline))
-      }
+      setDetectedOutlineNodes(nextDetectedNodes)
+      applyPresetState(nextPreset, parsed, nextDetectedNodes)
     } catch (error) {
       setParseError(error instanceof Error ? error.message : 'Failed to parse the PDF file.')
       setParsedDocument(null)
+      setDetectedOutlineNodes([])
       setOutlineNodes([])
       setSourceBlobUrl('')
-      resetCollapsedNodes()
-      resetExpandedNodes()
+      resetTreeUiState()
     } finally {
       setIsParsing(false)
     }
@@ -608,21 +633,7 @@ export function PdfOutlinePreviewPage() {
       return
     }
 
-    setActivePreset(preset)
-    resetCollapsedNodes()
-    resetExpandedNodes()
-
-    if (preset === 'embedded') {
-      setOutlineNodes(cloneNodes(parsedDocument.embeddedOutline))
-      return
-    }
-
-    if (preset === 'merged') {
-      setOutlineNodes(mergeNodes(parsedDocument.embeddedOutline, parsedDocument.suggestedOutline))
-      return
-    }
-
-    setOutlineNodes(cloneNodes(parsedDocument.suggestedOutline))
+    applyPresetState(preset, parsedDocument, detectedOutlineNodes)
   }
 
   async function handleFileSelection(event: ChangeEvent<HTMLInputElement>) {
@@ -855,6 +866,64 @@ export function PdfOutlinePreviewPage() {
     setExportMessage('Outlined PDF downloaded and loaded into the builder.')
   }
 
+  async function handleRefineOutline() {
+    if (!parsedDocument || outlineNodes.length === 0) {
+      return
+    }
+
+    setIsRefining(true)
+    setExportMessage('Asking the LLM to filter and clean the outline...')
+
+    try {
+      const candidates: RefineCandidate[] = outlineNodes.map((node) => ({
+        confidence: node.confidence,
+        id: node.id,
+        level: node.level,
+        pageNumber: node.pageNumber,
+        title: node.title,
+      }))
+
+      const response = await postJson<{ candidates: RefineCandidate[]; fileName?: string }, RefineResponse>(
+        '/api/outline/refine',
+        {
+          candidates,
+          fileName: parsedDocument.fileName,
+        },
+      )
+
+      const refined = response.outline.map<PdfOutlineNode>((node, index) => ({
+        confidence: 1,
+        id: `refined-${index + 1}`,
+        level: Math.max(1, Math.min(4, node.level)),
+        pageNumber: node.pageNumber,
+        source: 'detected',
+        title: node.title,
+      }))
+
+      if (refined.length === 0) {
+        setExportMessage('The LLM returned an empty outline. The original list is preserved.')
+        return
+      }
+
+      const nextDetectedNodes = cloneNodes(refined)
+      setDetectedOutlineNodes(nextDetectedNodes)
+      applyPresetState('detected', parsedDocument, nextDetectedNodes)
+      const dropped = outlineNodes.length - refined.length
+      const summary = response.reasoning
+        ? `AI refinement complete (${refined.length} kept${dropped > 0 ? `, ${dropped} dropped` : ''}). ${response.reasoning}`
+        : `AI refinement complete (${refined.length} kept${dropped > 0 ? `, ${dropped} dropped` : ''}).`
+      setExportMessage(summary)
+    } catch (error) {
+      setExportMessage(
+        error instanceof Error
+          ? `${error.message} The original outline is unchanged.`
+          : 'AI refinement failed. The original outline is unchanged.',
+      )
+    } finally {
+      setIsRefining(false)
+    }
+  }
+
   async function handleExport() {
     if (!selectedFile || !parsedDocument || !exportPayload) {
       return
@@ -935,6 +1004,14 @@ export function PdfOutlinePreviewPage() {
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <FileUp />
             Upload PDF
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => void handleRefineOutline()}
+            disabled={isRefining || outlineNodes.length === 0}
+          >
+            <Sparkles className={isRefining ? 'animate-pulse' : undefined} />
+            {isRefining ? 'Refining...' : 'AI 精炼'}
           </Button>
           <Button variant="outline" onClick={handleDownloadPayload} disabled={!exportPayload}>
             <FileJson />
@@ -1017,7 +1094,7 @@ export function PdfOutlinePreviewPage() {
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <SummaryCard label="Pages" value={String(parsedDocument.pageCount)} />
                 <SummaryCard label="Analyzed Lines" value={String(parsedDocument.analyzedLineCount)} />
-                <SummaryCard label="Detected Headings" value={String(parsedDocument.suggestedOutline.length)} />
+                <SummaryCard label="Detected Headings" value={String(detectedOutlineNodes.length)} />
                 <SummaryCard label="Embedded Bookmarks" value={String(parsedDocument.embeddedOutline.length)} />
               </section>
 
@@ -1065,7 +1142,7 @@ export function PdfOutlinePreviewPage() {
                         onClick={() => applyPreset('detected')}
                       >
                         <Sparkles />
-                        Detected ({parsedDocument.suggestedOutline.length})
+                        Detected ({detectedOutlineNodes.length})
                       </Button>
                       <Button
                         variant={activePreset === 'embedded' ? 'default' : 'outline'}

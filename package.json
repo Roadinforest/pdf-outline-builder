@@ -10,6 +10,7 @@
     "build": "pnpm -r build",
     "dev:api": "pnpm --filter @pdf-outline-builder/api dev",
     "dev:web": "pnpm --filter @pdf-outline-builder/web dev",
+    "dev": "pnpm run dev:api & pnpm run dev:web",
     "typecheck": "pnpm -r typecheck"
   }
 }

@@ -4,7 +4,7 @@ import { blobUploadRoute } from './routes/blobUpload.js'
 import { filesRoute } from './routes/files.js'
 import { healthRoute } from './routes/health.js'
 import { jobsRoute } from './routes/jobs.js'
-import { outlineExportRoute } from './routes/outlineExport.js'
+import { outlineRoute } from './routes/outlineExport.js'
 
 const localhostOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i
 const vercelOriginPattern = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i
@@ -46,7 +46,7 @@ app.get('/', (c) => {
 
 app.route('/api/health', healthRoute)
 app.route('/api/blob', blobUploadRoute)
-app.route('/api/outline', outlineExportRoute)
+app.route('/api/outline', outlineRoute)
 app.route('/api/jobs', jobsRoute)
 app.route('/api/files', filesRoute)
 

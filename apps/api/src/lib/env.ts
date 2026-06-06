@@ -20,3 +20,24 @@ export function getStorageMode() {
 
   return isRunningOnVercel() ? 'unavailable' : 'local'
 }
+
+export interface MiniMaxConfig {
+  apiKey: string
+  baseUrl: string
+  model: string
+}
+
+export function getMiniMaxConfig(): MiniMaxConfig | null {
+  const apiKey = process.env.MINIMAX_API_KEY?.trim()
+
+  if (!apiKey) {
+    return null
+  }
+
+  return {
+    apiKey,
+    baseUrl: process.env.MINIMAX_BASE_URL?.trim() || 'https://api.minimaxi.com/v1',
+    model: process.env.MINIMAX_MODEL?.trim() || 'MiniMax-Text-01',
+  }
+}
+

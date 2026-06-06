@@ -29,3 +29,16 @@ export async function readJsonOrThrow<T>(response: Response): Promise<T> {
 
   return response.json() as Promise<T>
 }
+
+export async function postJson<TRequest, TResponse>(pathname: string, payload: TRequest): Promise<TResponse> {
+  const response = await fetch(apiUrl(pathname), {
+    body: JSON.stringify(payload),
+    headers: {
+      'content-type': 'application/json',
+    },
+    method: 'POST',
+  })
+
+  return readJsonOrThrow<TResponse>(response)
+}
+
