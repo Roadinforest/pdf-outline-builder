@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PreviewLayout } from '@/components/PreviewLayout'
+import { useI18n, useTranslations, type Dictionary } from '@/i18n'
 import { apiUrl, postJson, readJsonOrThrow } from '@/lib/api'
 import { uploadSourcePdf } from '@/lib/blobUpload'
 import { parsePdfOutline, type ParsedPdfDocument, type PdfOutlineNode } from './pdfOutline'
@@ -59,14 +60,14 @@ function cloneNodes(nodes: PdfOutlineNode[]) {
   return nodes.map((node) => ({ ...node }))
 }
 
-function createManualNode(pageCount: number, level = 1): PdfOutlineNode {
+function createManualNode(pageCount: number, defaultTitle: string, level = 1): PdfOutlineNode {
   return {
     confidence: 1,
     id: `manual-${Math.random().toString(36).slice(2, 10)}`,
     level,
     pageNumber: Math.max(1, pageCount > 0 ? 1 : 0),
     source: 'manual',
-    title: 'New section',
+    title: defaultTitle,
   }
 }
 
@@ -333,9 +334,11 @@ function ParsingOverlay({
 
 function BlockingOverlay({
   description,
+  hint,
   title,
 }: {
   description: string
+  hint: string
   title: string
 }) {
   return (
@@ -346,19 +349,19 @@ function BlockingOverlay({
         </div>
         <h3 className="mt-5 text-xl font-semibold text-zinc-950">{title}</h3>
         <p className="mt-3 text-sm leading-6 text-zinc-600">{description}</p>
-        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-zinc-400">Please wait</p>
+        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-zinc-400">{hint}</p>
       </div>
     </div>
   )
 }
 
-type NotificationTone = 'success' | 'error'
-
 function FloatingNotification({
   message,
+  title,
   tone,
 }: {
   message: string
+  title: string
   tone: NotificationTone
 }) {
   const isSuccess = tone === 'success'
@@ -374,9 +377,7 @@ function FloatingNotification({
           {isSuccess ? <CheckCircle2 className="size-5" /> : <ShieldAlert className="size-5" />}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-zinc-950">
-            {isSuccess ? 'AI refinement complete' : 'AI refinement failed'}
-          </p>
+          <p className="text-sm font-semibold text-zinc-950">{title}</p>
           <p className="mt-1 text-sm leading-6 text-zinc-600">{message}</p>
         </div>
       </div>
@@ -384,13 +385,15 @@ function FloatingNotification({
   )
 }
 
-function getIndentLabel(level: number) {
+function getIndentLabel(dict: Dictionary, level: number) {
   if (level <= 1) {
-    return 'Root'
+    return dict.builder.tree.indentRoot
   }
 
-  return `Indent ${level - 1}`
+  return dict.builder.tree.indent.replace('{depth}', String(level - 1))
 }
+
+type NotificationTone = 'success' | 'error'
 
 function OutlineTreeBranch({
   collapsedNodeIds,
@@ -408,12 +411,16 @@ function OutlineTreeBranch({
   onUpdateTitle,
   pageCount,
 }: OutlineTreeBranchProps) {
+  const dict = useTranslations()
+  const treeDict = dict.builder.tree
+
   return (
     <div className="space-y-3">
       {items.map((item) => {
         const isCollapsed = collapsedNodeIds.has(item.node.id)
         const isExpanded = expandedNodeIds.has(item.node.id)
         const hasChildren = item.children.length > 0
+        const removeLabel = treeDict.remove.replace('{title}', item.node.title)
 
         return (
           <div key={item.node.id}>
@@ -425,7 +432,13 @@ function OutlineTreeBranch({
                     onClick={() => hasChildren ? onToggleCollapse(item.node.id) : null}
                     className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 text-zinc-600 transition hover:bg-zinc-100 disabled:cursor-default disabled:opacity-40"
                     disabled={!hasChildren}
-                    aria-label={hasChildren ? (isCollapsed ? 'Expand section' : 'Collapse section') : 'No child sections'}
+                    aria-label={
+                      hasChildren
+                        ? isCollapsed
+                          ? treeDict.expand
+                          : treeDict.collapse
+                        : treeDict.noChildren
+                    }
                   >
                     {hasChildren ? (
                       isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />
@@ -441,10 +454,10 @@ function OutlineTreeBranch({
                   >
                     <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
                       <span>H{item.node.level}</span>
-                      <span>{getIndentLabel(item.node.level)}</span>
+                      <span>{getIndentLabel(dict, item.node.level)}</span>
                     </div>
                     <p className="mt-2 break-words text-sm font-medium leading-6 text-zinc-900">
-                      {item.node.title || 'Untitled section'}
+                      {item.node.title || treeDict.untitled}
                     </p>
                   </button>
                 </div>
@@ -453,7 +466,7 @@ function OutlineTreeBranch({
                     variant="destructive"
                     size="icon-sm"
                     onClick={() => onRemove(item.index)}
-                    aria-label={`Remove ${item.node.title}`}
+                    aria-label={removeLabel}
                   >
                     <Trash2 />
                   </Button>
@@ -466,35 +479,35 @@ function OutlineTreeBranch({
                     <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
                       <span>#{item.index + 1}</span>
                       <span>H{item.node.level}</span>
-                      <span>{getIndentLabel(item.node.level)}</span>
+                      <span>{getIndentLabel(dict, item.node.level)}</span>
                       <span>P{item.node.pageNumber}</span>
                       <span>{item.node.source}</span>
                       <span>{Math.round(item.node.confidence * 100)}%</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="xs" onClick={() => onMoveUp(item.index)}>
-                        Up
+                        {treeDict.up}
                       </Button>
                       <Button variant="outline" size="xs" onClick={() => onMoveDown(item.index)}>
-                        Down
+                        {treeDict.down}
                       </Button>
                       <Button variant="outline" size="xs" onClick={() => onChangeLevel(item.index, item.node.level - 1)}>
-                        Outdent
+                        {treeDict.outdent}
                       </Button>
                       <Button variant="outline" size="xs" onClick={() => onChangeLevel(item.index, item.node.level + 1)}>
-                        Indent
+                        {treeDict.indentBtn}
                       </Button>
                       <Button variant="outline" size="xs" onClick={() => onAddChild(item.index)}>
-                        Child
+                        {treeDict.child}
                       </Button>
                       <Button variant="outline" size="xs" onClick={() => onAddSibling(item.index)}>
-                        After
+                        {treeDict.after}
                       </Button>
                       <Button
                         variant="destructive"
                         size="icon-sm"
                         onClick={() => onRemove(item.index)}
-                        aria-label={`Remove ${item.node.title}`}
+                        aria-label={removeLabel}
                       >
                         <Trash2 />
                       </Button>
@@ -502,7 +515,7 @@ function OutlineTreeBranch({
                   </div>
                   <div className="mt-4 grid gap-3 md:grid-cols-[120px,120px,1fr]">
                     <label className="flex flex-col gap-2 text-sm text-zinc-600">
-                      Level
+                      {treeDict.level}
                       <select
                         value={item.node.level}
                         onChange={(event) => onChangeLevel(item.index, Number(event.target.value))}
@@ -516,7 +529,7 @@ function OutlineTreeBranch({
                       </select>
                     </label>
                     <label className="flex flex-col gap-2 text-sm text-zinc-600">
-                      Page
+                      {treeDict.page}
                       <input
                         type="number"
                         min={1}
@@ -527,7 +540,7 @@ function OutlineTreeBranch({
                       />
                     </label>
                     <label className="flex flex-col gap-2 text-sm text-zinc-600">
-                      Title
+                      {treeDict.titleField}
                       <input
                         type="text"
                         value={item.node.title}
@@ -568,6 +581,8 @@ function OutlineTreeBranch({
 }
 
 export function PdfOutlinePreviewPage() {
+  const dict = useTranslations()
+  const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentUrl, setDocumentUrl] = useState('')
@@ -586,7 +601,7 @@ export function PdfOutlinePreviewPage() {
   const [isCopyingPayload, setIsCopyingPayload] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [hasAiRefinedOutline, setHasAiRefinedOutline] = useState(false)
-  const [notification, setNotification] = useState<{ message: string; tone: NotificationTone } | null>(null)
+  const [notification, setNotification] = useState<{ message: string; title: string; tone: NotificationTone } | null>(null)
   const [lastExportDownloadUrl, setLastExportDownloadUrl] = useState('')
   const [lastExportJobId, setLastExportJobId] = useState('')
   const [sourceBlobUrl, setSourceBlobUrl] = useState('')
@@ -691,7 +706,7 @@ export function PdfOutlinePreviewPage() {
       setDetectedOutlineNodes(nextDetectedNodes)
       applyPresetState(nextPreset, parsed, nextDetectedNodes)
     } catch (error) {
-      setParseError(error instanceof Error ? error.message : 'Failed to parse the PDF file.')
+      setParseError(error instanceof Error ? error.message : dict.builder.parseErrors.default)
       setParsedDocument(null)
       setHasAiRefinedOutline(false)
       setNotification(null)
@@ -820,7 +835,10 @@ export function PdfOutlinePreviewPage() {
   }
 
   function addRootNode() {
-    setOutlineNodes((nodes) => [...nodes, createManualNode(parsedDocument?.pageCount ?? 1, 1)])
+    setOutlineNodes((nodes) => [
+      ...nodes,
+      createManualNode(parsedDocument?.pageCount ?? 1, dict.builder.tree.newSection, 1),
+    ])
   }
 
   function addSiblingNode(index: number) {
@@ -832,7 +850,11 @@ export function PdfOutlinePreviewPage() {
 
     setOutlineNodes((nodes) => {
       const insertIndex = getSubtreeEnd(nodes, index)
-      const nextNode = createManualNode(parsedDocument?.pageCount ?? 1, current.level)
+      const nextNode = createManualNode(
+        parsedDocument?.pageCount ?? 1,
+        dict.builder.tree.newSection,
+        current.level,
+      )
       return [...nodes.slice(0, insertIndex), nextNode, ...nodes.slice(insertIndex)]
     })
   }
@@ -846,7 +868,11 @@ export function PdfOutlinePreviewPage() {
 
     setOutlineNodes((nodes) => {
       const insertIndex = getSubtreeEnd(nodes, index)
-      const nextNode = createManualNode(parsedDocument?.pageCount ?? 1, clampLevel(current.level + 1))
+      const nextNode = createManualNode(
+        parsedDocument?.pageCount ?? 1,
+        dict.builder.tree.newSection,
+        clampLevel(current.level + 1),
+      )
       return [...nodes.slice(0, insertIndex), nextNode, ...nodes.slice(insertIndex)]
     })
     setCollapsedNodeIds((currentIds) => currentIds.filter((id) => id !== current.id))
@@ -894,9 +920,9 @@ export function PdfOutlinePreviewPage() {
 
     try {
       await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2))
-      setExportMessage('Payload copied. You can inspect or replay the JSON contract directly.')
+      setExportMessage(dict.builder.export.copySuccess)
     } catch (error) {
-      setExportMessage(error instanceof Error ? error.message : 'Failed to copy payload.')
+      setExportMessage(error instanceof Error ? error.message : dict.builder.export.copyFailed)
     } finally {
       setIsCopyingPayload(false)
     }
@@ -912,22 +938,22 @@ export function PdfOutlinePreviewPage() {
       }
 
       if (job.status === 'failed') {
-        throw new Error(job.error ?? 'Export job failed.')
+        throw new Error(job.error ?? dict.builder.export.jobFailedGeneric)
       }
 
       await wait(1500)
     }
 
-    throw new Error('Export job is still processing. Open the job page and continue there.')
+    throw new Error(dict.builder.export.jobStillProcessing)
   }
 
   async function loadExportedPdf(downloadUrl: string, fileName: string) {
-    setExportMessage('Downloading exported PDF and reloading the workspace...')
+    setExportMessage(dict.builder.export.downloading)
 
     const response = await fetch(downloadUrl)
 
     if (!response.ok) {
-      throw new Error(`Could not download exported PDF (${response.status}).`)
+      throw new Error(`${dict.builder.export.downloadFailedPrefix} (${response.status}).`)
     }
 
     const pdfBlob = await response.blob()
@@ -939,7 +965,7 @@ export function PdfOutlinePreviewPage() {
     })
 
     await loadFile(outlinedFile)
-    setExportMessage('Outlined PDF downloaded and loaded into the builder.')
+    setExportMessage(dict.builder.export.doneReloading)
   }
 
   async function handleRefineOutline() {
@@ -948,7 +974,7 @@ export function PdfOutlinePreviewPage() {
     }
 
     setIsRefining(true)
-    setExportMessage('Asking the LLM to filter and clean the outline...')
+    setExportMessage(dict.builder.refine.refining)
 
     try {
       const candidates: RefineCandidate[] = outlineNodes.map((node) => ({
@@ -977,9 +1003,10 @@ export function PdfOutlinePreviewPage() {
       }))
 
       if (refined.length === 0) {
-        setExportMessage('The LLM returned an empty outline. The original list is preserved.')
+        setExportMessage(dict.builder.refine.emptyResult)
         setNotification({
-          message: 'The AI returned an empty outline, so the current tree was kept as-is.',
+          message: dict.builder.refine.emptyNotification,
+          title: dict.builder.refine.failureTitle,
           tone: 'error',
         })
         return
@@ -991,25 +1018,31 @@ export function PdfOutlinePreviewPage() {
       applyPresetState('detected', parsedDocument, nextDetectedNodes)
       const dropped = outlineNodes.length - refined.length
       const summary = response.reasoning
-        ? `AI refinement complete (${refined.length} kept${dropped > 0 ? `, ${dropped} dropped` : ''}). ${response.reasoning}`
-        : `AI refinement complete (${refined.length} kept${dropped > 0 ? `, ${dropped} dropped` : ''}).`
+        ? dropped > 0
+          ? `${t(dict.builder.refine.summaryDropped, { kept: refined.length, dropped })} ${response.reasoning}`
+          : `${t(dict.builder.refine.summaryKept, { kept: refined.length })} ${response.reasoning}`
+        : dropped > 0
+          ? t(dict.builder.refine.summaryDropped, { kept: refined.length, dropped })
+          : t(dict.builder.refine.summaryKept, { kept: refined.length })
       setExportMessage(summary)
       setNotification({
         message: dropped > 0
-          ? `Updated the outline tree with ${refined.length} AI-cleaned headings and removed ${dropped} lower-quality entries.`
-          : `Updated the outline tree with ${refined.length} AI-cleaned headings.`,
+          ? t(dict.builder.refine.notificationDropped, { kept: refined.length, dropped })
+          : t(dict.builder.refine.notificationKeptAll, { kept: refined.length }),
+        title: dict.builder.refine.successTitle,
         tone: 'success',
       })
     } catch (error) {
       setHasAiRefinedOutline(false)
       setNotification({
-        message: error instanceof Error ? error.message : 'The outline could not be refined this time.',
+        message: error instanceof Error ? error.message : dict.builder.refine.failureFallback,
+        title: dict.builder.refine.failureTitle,
         tone: 'error',
       })
       setExportMessage(
         error instanceof Error
-          ? `${error.message} The original outline is unchanged.`
-          : 'AI refinement failed. The original outline is unchanged.',
+          ? `${error.message} ${dict.builder.refine.failurePreserved}`
+          : `${dict.builder.refine.failureTitle}. ${dict.builder.refine.failurePreserved}`,
       )
     } finally {
       setIsRefining(false)
@@ -1029,14 +1062,14 @@ export function PdfOutlinePreviewPage() {
 
       if (!nextSourceBlobUrl) {
         setIsUploading(true)
-        setExportMessage('Uploading source PDF...')
+        setExportMessage(dict.builder.export.uploadStep)
 
         const uploadResult = await uploadSourcePdf(selectedFile)
         nextSourceBlobUrl = uploadResult.url
         setSourceBlobUrl(nextSourceBlobUrl)
       }
 
-      setExportMessage('Submitting export job...')
+      setExportMessage(dict.builder.export.submitStep)
 
       const response = await fetch(exportEndpoint, {
         body: JSON.stringify({
@@ -1063,7 +1096,7 @@ export function PdfOutlinePreviewPage() {
       const completedDownloadUrl = completedJob.downloadUrl
 
       if (!completedDownloadUrl) {
-        throw new Error('Export finished without a downloadable PDF.')
+        throw new Error(dict.builder.export.missingDownload)
       }
 
       await loadExportedPdf(completedDownloadUrl, parsedDocument.fileName)
@@ -1072,8 +1105,8 @@ export function PdfOutlinePreviewPage() {
     } catch (error) {
       setExportMessage(
         error instanceof Error
-          ? `${error.message} You can still download the JSON payload for manual export testing.`
-          : 'Export failed.',
+          ? `${error.message} ${dict.builder.export.jobFailedFallback}`
+          : dict.builder.export.exportFailed,
       )
     } finally {
       setIsUploading(false)
@@ -1084,7 +1117,7 @@ export function PdfOutlinePreviewPage() {
   return (
     <>
       <PreviewLayout
-        title="PDF Outline Studio"
+        title={dict.builder.layoutTitle}
         actions={
           <>
             <input
@@ -1096,7 +1129,7 @@ export function PdfOutlinePreviewPage() {
             />
             <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isRefining}>
               <FileUp />
-              Upload PDF
+              {dict.builder.actions.uploadPdf}
             </Button>
             <Button
               variant="outline"
@@ -1104,15 +1137,19 @@ export function PdfOutlinePreviewPage() {
               disabled={isRefining || outlineNodes.length === 0}
             >
               <Sparkles className={isRefining ? 'animate-pulse' : undefined} />
-              {isRefining ? 'Refining...' : 'AI Analyse'}
+              {isRefining ? dict.builder.actions.refining : dict.builder.actions.aiAnalyse}
             </Button>
             <Button variant="outline" onClick={handleDownloadPayload} disabled={!exportPayload || isRefining}>
               <FileJson />
-              Download Payload
+              {dict.builder.actions.downloadPayload}
             </Button>
             <Button onClick={handleExport} disabled={!exportPayload || isExporting || isUploading || isRefining}>
               <Send />
-              {isUploading ? 'Uploading...' : isExporting ? 'Exporting & Loading...' : 'Export & Load PDF'}
+              {isUploading
+                ? dict.builder.actions.uploading
+                : isExporting
+                  ? dict.builder.actions.exportingLoading
+                  : dict.builder.actions.exportLoad}
             </Button>
           </>
         }
@@ -1122,23 +1159,21 @@ export function PdfOutlinePreviewPage() {
           <section className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl">
-                <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">Browser First</p>
-                <h2 className="mt-2 text-3xl font-semibold text-zinc-950">Parse locally, export only once</h2>
+                <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">{dict.builder.hero.eyebrow}</p>
+                <h2 className="mt-2 text-3xl font-semibold text-zinc-950">{dict.builder.hero.title}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-                  This flow keeps PDF reading, text extraction, outline guessing, and manual edits inside the
-                  browser. The backend only receives the uploaded source blob URL plus your approved outline when it
-                  is time to write bookmarks back into the file.
+                  {dict.builder.hero.description}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isRefining}>
                   <FileUp />
-                  Choose a PDF
+                  {dict.builder.hero.choosePdf}
                 </Button>
                 {selectedFile ? (
                   <Button variant="outline" onClick={() => void loadFile(selectedFile)} disabled={isParsing || isRefining}>
                     <RefreshCw className={isParsing || isRefining ? 'animate-spin' : undefined} />
-                    Re-run detection
+                    {dict.builder.hero.rerun}
                   </Button>
                 ) : null}
               </div>
@@ -1150,12 +1185,12 @@ export function PdfOutlinePreviewPage() {
                 <span className="rounded-full bg-zinc-100 px-3 py-1">{formatBytes(selectedFile.size)}</span>
                 {parsedDocument ? (
                   <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">
-                    {parsedDocument.pageCount} pages
+                    {t(dict.builder.fileBadges.pages, { count: parsedDocument.pageCount })}
                   </span>
                 ) : null}
                 {sourceBlobUrl ? (
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">
-                    Source uploaded
+                    {dict.builder.fileBadges.sourceUploaded}
                   </span>
                 ) : null}
                 {lastExportJobId ? (
@@ -1163,7 +1198,7 @@ export function PdfOutlinePreviewPage() {
                     to={`/jobs/${lastExportJobId}`}
                     className="rounded-full bg-sky-100 px-3 py-1 text-sky-900 transition hover:bg-sky-200"
                   >
-                    Job #{lastExportJobId.slice(0, 8)}
+                    {t(dict.builder.fileBadges.job, { id: lastExportJobId.slice(0, 8) })}
                   </Link>
                 ) : null}
               </div>
@@ -1185,31 +1220,29 @@ export function PdfOutlinePreviewPage() {
           {parsedDocument ? (
             <>
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <SummaryCard label="Pages" value={String(parsedDocument.pageCount)} />
-                <SummaryCard label="Analyzed Lines" value={String(parsedDocument.analyzedLineCount)} />
-                <SummaryCard label="Detected Headings" value={String(detectedOutlineNodes.length)} />
-                <SummaryCard label="Embedded Bookmarks" value={String(parsedDocument.embeddedOutline.length)} />
+                <SummaryCard label={dict.builder.summary.pages} value={String(parsedDocument.pageCount)} />
+                <SummaryCard label={dict.builder.summary.analyzedLines} value={String(parsedDocument.analyzedLineCount)} />
+                <SummaryCard label={dict.builder.summary.detectedHeadings} value={String(detectedOutlineNodes.length)} />
+                <SummaryCard label={dict.builder.summary.embeddedBookmarks} value={String(parsedDocument.embeddedOutline.length)} />
               </section>
 
               <section className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
                 <div className="relative h-[720px] overflow-hidden rounded-[32px] border border-zinc-200/70 bg-white/85 shadow-sm backdrop-blur-sm">
                   <div className="border-b border-zinc-200/70 px-5 py-4">
-                    <h3 className="text-lg font-semibold text-zinc-950">Document preview</h3>
-                    <p className="mt-1 text-sm text-zinc-600">
-                      The PDF stays local until you export. Use this view to compare pages against the outline.
-                    </p>
+                    <h3 className="text-lg font-semibold text-zinc-950">{dict.builder.preview.title}</h3>
+                    <p className="mt-1 text-sm text-zinc-600">{dict.builder.preview.description}</p>
                   </div>
                   {documentUrl ? (
-                    <iframe title="PDF preview" src={documentUrl} className="h-[680px] w-full bg-zinc-100" />
+                    <iframe title={dict.builder.preview.title} src={documentUrl} className="h-[680px] w-full bg-zinc-100" />
                   ) : (
                     <div className="flex h-[680px] items-center justify-center text-sm text-zinc-500">
-                      No preview available.
+                      {dict.builder.preview.none}
                     </div>
                   )}
                   {isParsing ? (
                     <ParsingOverlay
-                      title="Analyzing PDF"
-                      description="Extracting text, checking embedded bookmarks, and generating a candidate outline."
+                      title={dict.builder.parsingOverlay.pdfTitle}
+                      description={dict.builder.parsingOverlay.pdfDescription}
                     />
                   ) : null}
                 </div>
@@ -1219,7 +1252,7 @@ export function PdfOutlinePreviewPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-semibold text-zinc-950">Outline tree editor</h3>
+                          <h3 className="text-lg font-semibold text-zinc-950">{dict.builder.editor.title}</h3>
                           <span
                             className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
                               hasAiRefinedOutline
@@ -1228,16 +1261,14 @@ export function PdfOutlinePreviewPage() {
                             }`}
                           >
                             <Info className="size-3.5" />
-                            AI Version
+                            {dict.builder.editor.aiBadge}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-zinc-600">
-                          Edit the hierarchy directly as a tree. Reordering keeps whole branches together.
-                        </p>
+                        <p className="mt-1 text-sm text-zinc-600">{dict.builder.editor.description}</p>
                       </div>
                       <Button variant="outline" onClick={addRootNode}>
                         <Plus />
-                        Add root
+                        {dict.builder.editor.addRoot}
                       </Button>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -1247,7 +1278,7 @@ export function PdfOutlinePreviewPage() {
                         onClick={() => applyPreset('detected')}
                       >
                         <Sparkles />
-                        Detected ({detectedOutlineNodes.length})
+                        {t(dict.builder.editor.detected, { count: detectedOutlineNodes.length })}
                       </Button>
                       <Button
                         variant={activePreset === 'embedded' ? 'default' : 'outline'}
@@ -1255,22 +1286,22 @@ export function PdfOutlinePreviewPage() {
                         onClick={() => applyPreset('embedded')}
                         disabled={parsedDocument.embeddedOutline.length === 0}
                       >
-                        Embedded ({parsedDocument.embeddedOutline.length})
+                        {t(dict.builder.editor.embedded, { count: parsedDocument.embeddedOutline.length })}
                       </Button>
                       <Button
                         variant={activePreset === 'merged' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => applyPreset('merged')}
                       >
-                        Merged ({mergedOutlineCount})
+                        {t(dict.builder.editor.merged, { count: mergedOutlineCount })}
                       </Button>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={expandAllNodes}>
-                        Expand all
+                        {dict.builder.editor.expandAll}
                       </Button>
                       <Button variant="outline" size="sm" onClick={collapseAllNodes}>
-                        Collapse all
+                        {dict.builder.editor.collapseAll}
                       </Button>
                     </div>
                   </div>
@@ -1286,13 +1317,13 @@ export function PdfOutlinePreviewPage() {
                   ) : null}
 
                   <div className="border-b border-zinc-200/70 bg-zinc-50/80 px-5 py-3 text-sm text-zinc-600">
-                    Order still follows the export sequence, but you now edit it as nested branches instead of one long flat list.
+                    {dict.builder.editor.bannerHint}
                   </div>
 
                   <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                     {outlineNodes.length === 0 ? (
                       <div className="rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-6 text-sm text-zinc-600">
-                        No outline nodes yet. Try the detected preset or add a root section.
+                        {dict.builder.editor.emptyState}
                       </div>
                     ) : (
                       <OutlineTreeBranch
@@ -1315,8 +1346,8 @@ export function PdfOutlinePreviewPage() {
                   </div>
                   {isParsing ? (
                     <ParsingOverlay
-                      title="Building outline"
-                      description="Scoring headings by size, numbering, and layout so the editor can open with a usable tree."
+                      title={dict.builder.parsingOverlay.outlineTitle}
+                      description={dict.builder.parsingOverlay.outlineDescription}
                     />
                   ) : null}
                 </div>
@@ -1324,28 +1355,25 @@ export function PdfOutlinePreviewPage() {
 
               <section className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]">
                 <div className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
-                  <h3 className="text-lg font-semibold text-zinc-950">Export contract</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-600">
-                    Keep the server tiny: upload the original file once, then send the blob URL and approved outline
-                    as JSON so the API only needs to write bookmarks and store the result.
-                  </p>
+                  <h3 className="text-lg font-semibold text-zinc-950">{dict.builder.contract.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600">{dict.builder.contract.description}</p>
                   {lastExportDownloadUrl ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <a href={lastExportDownloadUrl} target="_blank" rel="noreferrer">
                         <Button variant="outline" size="sm">
                           <Download />
-                          Open exported PDF
+                          {dict.builder.contract.openExportedPdf}
                         </Button>
                       </a>
                       {lastExportJobId ? (
                         <Link to={`/jobs/${lastExportJobId}`}>
-                          <Button variant="outline" size="sm">Open job details</Button>
+                          <Button variant="outline" size="sm">{dict.builder.contract.openJobDetails}</Button>
                         </Link>
                       ) : null}
                     </div>
                   ) : null}
                   <label className="mt-4 flex flex-col gap-2 text-sm text-zinc-600">
-                    Backend endpoint
+                    {dict.builder.contract.backendEndpoint}
                     <input
                       type="text"
                       value={exportEndpoint}
@@ -1361,20 +1389,17 @@ export function PdfOutlinePreviewPage() {
                 <div className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-lg font-semibold text-zinc-950">Payload preview</h3>
-                      <p className="mt-2 text-sm leading-6 text-zinc-600">
-                        This is the exact structured data your lightweight export service needs before `sourceBlobUrl`
-                        is added at submit time.
-                      </p>
+                      <h3 className="text-lg font-semibold text-zinc-950">{dict.builder.payload.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-zinc-600">{dict.builder.payload.description}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" onClick={handleCopyPayload} disabled={!exportPayload || isCopyingPayload}>
                         <Download />
-                        {isCopyingPayload ? 'Copying...' : 'Copy JSON'}
+                        {isCopyingPayload ? dict.builder.payload.copying : dict.builder.payload.copy}
                       </Button>
                       <Button variant="outline" onClick={handleDownloadPayload} disabled={!exportPayload}>
                         <FileJson />
-                        Save JSON
+                        {dict.builder.payload.save}
                       </Button>
                     </div>
                   </div>
@@ -1386,22 +1411,19 @@ export function PdfOutlinePreviewPage() {
             </>
           ) : (
             <section className="relative rounded-[32px] border border-dashed border-zinc-300 bg-white/70 px-6 py-10 text-center shadow-sm backdrop-blur-sm">
-              <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">MVP Flow</p>
-              <h2 className="mt-2 text-2xl font-semibold text-zinc-950">Upload a PDF to start a browser-side pass</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-                The page will inspect existing bookmarks, extract text with PDF.js, infer a heading structure, and
-                prepare a clean payload for the export service that writes bookmarks back into the final PDF.
-              </p>
+              <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">{dict.builder.empty.eyebrow}</p>
+              <h2 className="mt-2 text-2xl font-semibold text-zinc-950">{dict.builder.empty.title}</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-zinc-600">{dict.builder.empty.description}</p>
               <div className="mt-6 flex justify-center">
                 <Button onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
                   <FileUp />
-                  {isParsing ? 'Analyzing...' : 'Choose a PDF'}
+                  {isParsing ? dict.builder.empty.analyzing : dict.builder.empty.choosePdf}
                 </Button>
               </div>
               {isParsing ? (
                 <ParsingOverlay
-                  title="Reading your PDF"
-                  description="The browser is loading pages, extracting text, and preparing the initial outline."
+                  title={dict.builder.parsingOverlay.readingTitle}
+                  description={dict.builder.parsingOverlay.readingDescription}
                 />
               ) : null}
             </section>
@@ -1411,11 +1433,18 @@ export function PdfOutlinePreviewPage() {
       </PreviewLayout>
       {isRefining ? (
         <BlockingOverlay
-          title="AI is refining the outline"
-          description="Filtering headings, cleaning titles, and rebuilding the detected outline. Other actions are temporarily disabled to keep the editor state consistent."
+          title={dict.builder.refine.blockedTitle}
+          description={dict.builder.refine.blockedDescription}
+          hint={dict.builder.refine.blockedHint}
         />
       ) : null}
-      {notification ? <FloatingNotification message={notification.message} tone={notification.tone} /> : null}
+      {notification ? (
+        <FloatingNotification
+          message={notification.message}
+          title={notification.title}
+          tone={notification.tone}
+        />
+      ) : null}
     </>
   )
 }

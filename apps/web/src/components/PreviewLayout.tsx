@@ -1,5 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { Languages } from 'lucide-react'
+import { LOCALE_LABELS, useI18n, useTranslations } from '@/i18n'
 import { cn } from '@/lib/cn'
 
 interface PreviewLayoutProps extends PropsWithChildren {
@@ -7,14 +9,34 @@ interface PreviewLayoutProps extends PropsWithChildren {
   title: string
 }
 
-const navItems = [
-  { href: '/', label: 'Home' },
-  { href: '/builder', label: 'Builder' },
-  { href: '/docs', label: 'Docs' },
-]
+function LanguageToggle() {
+  const { locale, toggleLocale } = useI18n()
+  const dict = useTranslations()
+  const nextLocale = locale === 'en' ? 'zh' : 'en'
+
+  return (
+    <button
+      type="button"
+      onClick={toggleLocale}
+      aria-label={dict.language.switchTo}
+      title={dict.language.switchTo}
+      className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-100"
+    >
+      <Languages className="size-4" />
+      <span className="text-xs uppercase tracking-[0.2em] text-zinc-500">{dict.language.label}</span>
+      <span className="font-medium text-zinc-900">{LOCALE_LABELS[nextLocale]}</span>
+    </button>
+  )
+}
 
 export function PreviewLayout({ actions, children, title }: PreviewLayoutProps) {
   const location = useLocation()
+  const dict = useTranslations()
+  const navItems = [
+    { href: '/', label: dict.nav.home },
+    { href: '/builder', label: dict.nav.builder },
+    { href: '/docs', label: dict.nav.docs },
+  ]
 
   return (
     <div className="min-h-screen">
@@ -23,7 +45,7 @@ export function PreviewLayout({ actions, children, title }: PreviewLayoutProps) 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
             <div>
               <Link to="/" className="text-lg font-semibold tracking-tight text-zinc-950">
-                PDF Outline Builder
+                {dict.layout.brand}
               </Link>
               <p className="text-sm text-zinc-600">{title}</p>
             </div>
@@ -46,7 +68,10 @@ export function PreviewLayout({ actions, children, title }: PreviewLayoutProps) 
               })}
             </nav>
           </div>
-          {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <LanguageToggle />
+            {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+          </div>
         </div>
       </header>
       <main>{children}</main>

@@ -1,27 +1,15 @@
 <claude-mem-context>
 # Memory Context
 
-# [pdf-outline-builder] recent context, 2026-06-06 7:06pm GMT+8
+# [pdf-outline-builder] recent context, 2026-06-13 11:06pm GMT+8
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (29,248t read) | 0t work
+Stats: 50 obs (29,831t read) | 0t work
 
 ### Jun 6, 2026
-1004 2:23p 🔵 Web app export flow: upload → POST export → poll job → download → reload
-1005 " 🔵 Job status schema defines 4 states and provides a polling-friendly response shape
-1006 " 🔵 Shared package is minimal: just zod, with compiled dist output for downstream consumption
-1007 " 🔵 Client-side blob upload auto-detects storage mode via /api/health and falls back through blob → local → unavailable
-1008 2:24p 🟣 LangChain dependencies added to api workspace using OpenAI-compatible adapter
-1009 " 🟣 New shared refine.ts module defines LLM request/response contract for outline refinement
-1010 " 🟣 MiniMax LLM config helper added to api env module with sensible defaults
-1011 2:25p 🟣 LLM-powered outline refiner service implemented with LangChain + Minimax + zod structured output
-1012 2:26p 🟣 POST /api/outline/refine endpoint created and mounted under /api/outline
-1014 " 🟣 Generic postJson helper added to web API lib; PreviewPage imports RefineCandidate/RefineResponse types
-1015 2:36p 🔴 MINIMAX_API_KEY not loaded from apps/api/.env at runtime
-1016 2:42p 🔴 dotenv loader wired + critical discovery: user's MiniMax endpoint is Anthropic-compatible, not OpenAI-compatible
 1017 2:43p ✅ Added @langchain/anthropic to support the user's actual MiniMax Anthropic-compatible endpoint
 1018 " 🔄 refineOutline.ts now picks ChatAnthropic vs ChatOpenAI at runtime based on baseURL
 1019 2:44p 🔴 Polymorphic factory lost zod type narrowing; inlined the dispatch in callStructured
@@ -66,8 +54,21 @@ S897 Fix the live "AI refinement failed: the model did not return a JSON object"
 1048 6:33p 🔵 LLM refineOutline fails: structured output path null-length crash, JSON-text fallback not parsed
 1049 6:34p 🟣 User requests: load AI-refined outline into Outline tree editor
 1050 6:45p 🔴 refineOutline: unwrap nested-JSON content, balance braces correctly, cap LLM output
-1051 " 🔵 Frontend "AI Analyse → outline tree editor" wiring already exists in PdfOutlinePreviewPage.tsx
+1051 " 🔵 Frontend "AI 精炼 → outline tree editor" wiring already exists in PdfOutlinePreviewPage.tsx
 1052 6:51p ✅ User requested optimization of recent changes without breaking functionality
 1053 " ✅ User requested AI-parse loading state that blocks other UI actions
 1054 " 🟣 AI-refine loading overlay blocks the page during LLM refinement
+1055 " ✅ User requested AI-result notification and AI Version badge on the outline tree editor
+1056 7:07p 🟣 AI refinement toast notification plus AI Version badge on Outline tree editor
+### Jun 13, 2026
+1220 11:00p 🟣 Requested: Add bilingual (Chinese/English) translation to PDF Outline Builder website with English as default
+1222 " 🔵 Discovered project structure for PDF Outline Builder monorepo before i18n implementation
+1223 11:01p 🔵 Cataloged hardcoded user-facing strings across all 5 web app pages and shared layout for i18n translation
+1224 " 🟣 Created i18n types module defining Locale, default 'en', storage key, and display labels
+1225 11:02p 🟣 Created comprehensive English translation dictionary with nested type-safe structure
+1226 " 🟣 Created Chinese (zh) translation dictionary mirroring English schema
+1227 11:03p 🟣 Implemented complete custom i18n infrastructure: typed Dictionary, Context provider with browser detection, hooks, and barrel exports
+1228 " 🟣 Wired I18nProvider into app root, added LanguageToggle UI to PreviewLayout, and translated HomePage
+1229 11:04p 🟣 Translated DocsPage, NotFoundPage, and JobStatusPage with i18n hooks; cleaned up unused useI18n import
+1230 11:05p 🔄 Added newSection translation key to all three i18n files (en, zh, types) to support new outline node titles
 </claude-mem-context>
