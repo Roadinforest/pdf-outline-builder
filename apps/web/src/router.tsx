@@ -1,18 +1,17 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { BuilderPage } from './pages/BuilderPage'
 import { DocsPage } from './pages/DocsPage'
-import { HomePage } from './pages/HomePage'
 import { JobStatusPage } from './pages/JobStatusPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <HomePage />,
+    element: <BuilderPage />,
   },
   {
     path: '/builder',
-    element: <BuilderPage />,
+    element: <Navigate to="/" replace />,
   },
   {
     path: '/docs',

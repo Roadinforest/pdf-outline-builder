@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type {
   CreateExportResponse,
   ExportJob,
+  ExportRequest,
   RefineCandidate,
   RefineResponse,
 } from '@pdf-outline-builder/shared'
@@ -10,9 +11,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Download,
   Info,
-  FileJson,
   FileUp,
   Plus,
   RefreshCw,
@@ -53,7 +52,6 @@ interface OutlineTreeBranchProps {
   pageCount: number
 }
 
-const defaultExportEndpoint = apiUrl('/api/outline/export')
 const levelOptions = [1, 2, 3, 4]
 
 function cloneNodes(nodes: PdfOutlineNode[]) {
@@ -227,7 +225,7 @@ function formatBytes(value: number) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function buildExportPayload(document: ParsedPdfDocument, outline: PdfOutlineNode[]) {
+function buildExportDraft(document: ParsedPdfDocument, outline: PdfOutlineNode[]): Omit<ExportRequest, 'sourceBlobUrl'> {
   return {
     document: {
       fileName: document.fileName,
@@ -274,27 +272,6 @@ function downloadBlob(blob: Blob, filename: string) {
   window.setTimeout(() => {
     URL.revokeObjectURL(objectUrl)
   }, 0)
-}
-
-function downloadJson(payload: unknown, filename: string) {
-  downloadBlob(
-    new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' }),
-    filename,
-  )
-}
-
-function buildContractSnippet(endpoint: string) {
-  return `POST ${endpoint}
-Content-Type: application/json
-
-{
-  "sourceBlobUrl": "https://blob.vercel-storage.com/...",
-  "document": { ... },
-  "outline": [ ... ]
-}
-
-Successful response:
-{ "jobId": "...", "status": "processing|completed" }`
 }
 
 function SummaryCard({
@@ -594,15 +571,12 @@ export function PdfOutlinePreviewPage() {
   const [activePreset, setActivePreset] = useState<OutlinePreset>('detected')
   const [isParsing, setIsParsing] = useState(false)
   const [parseError, setParseError] = useState('')
-  const [exportEndpoint, setExportEndpoint] = useState(defaultExportEndpoint)
   const [exportMessage, setExportMessage] = useState('')
   const [isExporting, setIsExporting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [isCopyingPayload, setIsCopyingPayload] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [hasAiRefinedOutline, setHasAiRefinedOutline] = useState(false)
   const [notification, setNotification] = useState<{ message: string; title: string; tone: NotificationTone } | null>(null)
-  const [lastExportDownloadUrl, setLastExportDownloadUrl] = useState('')
   const [lastExportJobId, setLastExportJobId] = useState('')
   const [sourceBlobUrl, setSourceBlobUrl] = useState('')
 
@@ -638,12 +612,12 @@ export function PdfOutlinePreviewPage() {
 
     return mergeNodes(parsedDocument.embeddedOutline, detectedOutlineNodes).length
   }, [detectedOutlineNodes, parsedDocument])
-  const exportPayload = useMemo(() => {
+  const exportDraft = useMemo(() => {
     if (!parsedDocument) {
       return null
     }
 
-    return buildExportPayload(parsedDocument, outlineNodes)
+    return buildExportDraft(parsedDocument, outlineNodes)
   }, [outlineNodes, parsedDocument])
 
   function resetCollapsedNodes() {
@@ -681,7 +655,6 @@ export function PdfOutlinePreviewPage() {
     setIsParsing(true)
     setParseError('')
     setExportMessage('')
-    setLastExportDownloadUrl('')
     setLastExportJobId('')
     setSourceBlobUrl('')
 
@@ -902,32 +875,6 @@ export function PdfOutlinePreviewPage() {
     resetCollapsedNodes()
   }
 
-  function handleDownloadPayload() {
-    if (!exportPayload || !parsedDocument) {
-      return
-    }
-
-    const baseName = parsedDocument.fileName.replace(/\.pdf$/i, '')
-    downloadJson(exportPayload, `${baseName || 'pdf-outline'}-payload.json`)
-  }
-
-  async function handleCopyPayload() {
-    if (!exportPayload) {
-      return
-    }
-
-    setIsCopyingPayload(true)
-
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(exportPayload, null, 2))
-      setExportMessage(dict.builder.export.copySuccess)
-    } catch (error) {
-      setExportMessage(error instanceof Error ? error.message : dict.builder.export.copyFailed)
-    } finally {
-      setIsCopyingPayload(false)
-    }
-  }
-
   async function waitForCompletedJob(jobId: string) {
     for (let attempt = 0; attempt < 40; attempt += 1) {
       const response = await fetch(apiUrl(`/api/jobs/${jobId}`))
@@ -1050,7 +997,7 @@ export function PdfOutlinePreviewPage() {
   }
 
   async function handleExport() {
-    if (!selectedFile || !parsedDocument || !exportPayload) {
+    if (!selectedFile || !parsedDocument || !exportDraft) {
       return
     }
 
@@ -1070,19 +1017,11 @@ export function PdfOutlinePreviewPage() {
       }
 
       setExportMessage(dict.builder.export.submitStep)
-
-      const response = await fetch(exportEndpoint, {
-        body: JSON.stringify({
-          ...exportPayload,
-          sourceBlobUrl: nextSourceBlobUrl,
-        }),
-        headers: {
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-      })
-
-      const responseBody = await readJsonOrThrow<CreateExportResponse>(response)
+      const exportRequest: ExportRequest = {
+        ...exportDraft,
+        sourceBlobUrl: nextSourceBlobUrl,
+      }
+      const responseBody = await postJson<ExportRequest, CreateExportResponse>('/api/outline/export', exportRequest)
       setLastExportJobId(responseBody.jobId)
 
       const completedJob =
@@ -1100,14 +1039,9 @@ export function PdfOutlinePreviewPage() {
       }
 
       await loadExportedPdf(completedDownloadUrl, parsedDocument.fileName)
-      setLastExportDownloadUrl(completedDownloadUrl)
       setLastExportJobId(responseBody.jobId)
     } catch (error) {
-      setExportMessage(
-        error instanceof Error
-          ? `${error.message} ${dict.builder.export.jobFailedFallback}`
-          : dict.builder.export.exportFailed,
-      )
+      setExportMessage(error instanceof Error ? error.message : dict.builder.export.exportFailed)
     } finally {
       setIsUploading(false)
       setIsExporting(false)
@@ -1139,11 +1073,7 @@ export function PdfOutlinePreviewPage() {
               <Sparkles className={isRefining ? 'animate-pulse' : undefined} />
               {isRefining ? dict.builder.actions.refining : dict.builder.actions.aiAnalyse}
             </Button>
-            <Button variant="outline" onClick={handleDownloadPayload} disabled={!exportPayload || isRefining}>
-              <FileJson />
-              {dict.builder.actions.downloadPayload}
-            </Button>
-            <Button onClick={handleExport} disabled={!exportPayload || isExporting || isUploading || isRefining}>
+            <Button onClick={handleExport} disabled={!exportDraft || isExporting || isUploading || isRefining}>
               <Send />
               {isUploading
                 ? dict.builder.actions.uploading
@@ -1156,31 +1086,10 @@ export function PdfOutlinePreviewPage() {
       >
         <div className="h-full overflow-auto px-6 py-6" aria-busy={isRefining}>
         <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
-          <section className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">{dict.builder.hero.eyebrow}</p>
-                <h2 className="mt-2 text-3xl font-semibold text-zinc-950">{dict.builder.hero.title}</h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-                  {dict.builder.hero.description}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isRefining}>
-                  <FileUp />
-                  {dict.builder.hero.choosePdf}
-                </Button>
-                {selectedFile ? (
-                  <Button variant="outline" onClick={() => void loadFile(selectedFile)} disabled={isParsing || isRefining}>
-                    <RefreshCw className={isParsing || isRefining ? 'animate-spin' : undefined} />
-                    {dict.builder.hero.rerun}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-
-            {selectedFile ? (
-              <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-zinc-600">
+          {selectedFile || parseError || exportMessage ? (
+            <section className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
+              {selectedFile ? (
+                <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-600">
                 <span className="rounded-full bg-zinc-100 px-3 py-1">{selectedFile.name}</span>
                 <span className="rounded-full bg-zinc-100 px-3 py-1">{formatBytes(selectedFile.size)}</span>
                 {parsedDocument ? (
@@ -1201,21 +1110,28 @@ export function PdfOutlinePreviewPage() {
                     {t(dict.builder.fileBadges.job, { id: lastExportJobId.slice(0, 8) })}
                   </Link>
                 ) : null}
+                {selectedFile ? (
+                  <Button variant="outline" onClick={() => void loadFile(selectedFile)} disabled={isParsing || isRefining}>
+                    <RefreshCw className={isParsing || isRefining ? 'animate-spin' : undefined} />
+                    {dict.builder.hero.rerun}
+                  </Button>
+                ) : null}
               </div>
-            ) : null}
+              ) : null}
 
-            {parseError ? (
-              <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                {parseError}
-              </p>
-            ) : null}
+              {parseError ? (
+                <p className={`${selectedFile ? 'mt-4 ' : ''}rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700`}>
+                  {parseError}
+                </p>
+              ) : null}
 
-            {exportMessage ? (
-              <p className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700">
-                {exportMessage}
-              </p>
-            ) : null}
-          </section>
+              {exportMessage ? (
+                <p className={`${selectedFile || parseError ? 'mt-4 ' : ''}rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700`}>
+                  {exportMessage}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
 
           {parsedDocument ? (
             <>
@@ -1353,61 +1269,6 @@ export function PdfOutlinePreviewPage() {
                 </div>
               </section>
 
-              <section className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]">
-                <div className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
-                  <h3 className="text-lg font-semibold text-zinc-950">{dict.builder.contract.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-600">{dict.builder.contract.description}</p>
-                  {lastExportDownloadUrl ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <a href={lastExportDownloadUrl} target="_blank" rel="noreferrer">
-                        <Button variant="outline" size="sm">
-                          <Download />
-                          {dict.builder.contract.openExportedPdf}
-                        </Button>
-                      </a>
-                      {lastExportJobId ? (
-                        <Link to={`/jobs/${lastExportJobId}`}>
-                          <Button variant="outline" size="sm">{dict.builder.contract.openJobDetails}</Button>
-                        </Link>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <label className="mt-4 flex flex-col gap-2 text-sm text-zinc-600">
-                    {dict.builder.contract.backendEndpoint}
-                    <input
-                      type="text"
-                      value={exportEndpoint}
-                      onChange={(event) => setExportEndpoint(event.target.value)}
-                      className="h-11 rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-800 outline-none transition focus:border-zinc-400"
-                    />
-                  </label>
-                  <pre className="mt-4 overflow-auto rounded-3xl bg-zinc-950 px-4 py-4 text-xs leading-6 text-zinc-100">
-                    {buildContractSnippet(exportEndpoint)}
-                  </pre>
-                </div>
-
-                <div className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-zinc-950">{dict.builder.payload.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-zinc-600">{dict.builder.payload.description}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" onClick={handleCopyPayload} disabled={!exportPayload || isCopyingPayload}>
-                        <Download />
-                        {isCopyingPayload ? dict.builder.payload.copying : dict.builder.payload.copy}
-                      </Button>
-                      <Button variant="outline" onClick={handleDownloadPayload} disabled={!exportPayload}>
-                        <FileJson />
-                        {dict.builder.payload.save}
-                      </Button>
-                    </div>
-                  </div>
-                  <pre className="mt-4 max-h-[420px] overflow-auto rounded-3xl bg-zinc-950 px-4 py-4 text-xs leading-6 text-zinc-100">
-                    {JSON.stringify(exportPayload, null, 2)}
-                  </pre>
-                </div>
-              </section>
             </>
           ) : (
             <section className="relative rounded-[32px] border border-dashed border-zinc-300 bg-white/70 px-6 py-10 text-center shadow-sm backdrop-blur-sm">

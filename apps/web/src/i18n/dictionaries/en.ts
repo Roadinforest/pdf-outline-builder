@@ -83,7 +83,6 @@ const dictionary: Dictionary = {
       uploadPdf: 'Upload PDF',
       aiAnalyse: 'AI Analyse',
       refining: 'Refining...',
-      downloadPayload: 'Download Payload',
       exportingLoading: 'Exporting & Loading...',
       uploading: 'Uploading...',
       exportLoad: 'Export & Load PDF',
@@ -139,27 +138,11 @@ const dictionary: Dictionary = {
       readingDescription:
         'The browser is loading pages, extracting text, and preparing the initial outline.',
     },
-    contract: {
-      title: 'Export contract',
-      description:
-        'Keep the server tiny: upload the original file once, then send the blob URL and approved outline as JSON so the API only needs to write bookmarks and store the result.',
-      openExportedPdf: 'Open exported PDF',
-      openJobDetails: 'Open job details',
-      backendEndpoint: 'Backend endpoint',
-    },
-    payload: {
-      title: 'Payload preview',
-      description:
-        'This is the exact structured data your lightweight export service needs before `sourceBlobUrl` is added at submit time.',
-      copying: 'Copying...',
-      copy: 'Copy JSON',
-      save: 'Save JSON',
-    },
     empty: {
       eyebrow: 'MVP Flow',
       title: 'Upload a PDF to start a browser-side pass',
       description:
-        'The page will inspect existing bookmarks, extract text with PDF.js, infer a heading structure, and prepare a clean payload for the export service that writes bookmarks back into the final PDF.',
+        'The page will inspect existing bookmarks, extract text with PDF.js, infer a heading structure, and prepare the final JSON request used by the export service to write bookmarks back into the PDF.',
       choosePdf: 'Choose a PDF',
       analyzing: 'Analyzing...',
     },
@@ -183,14 +166,11 @@ const dictionary: Dictionary = {
       noChildren: 'No child sections',
     },
     export: {
-      copySuccess: 'Payload copied. You can inspect or replay the JSON contract directly.',
-      copyFailed: 'Failed to copy payload.',
       downloading: 'Downloading exported PDF and reloading the workspace...',
       downloadFailedPrefix: 'Could not download exported PDF',
       doneReloading: 'Outlined PDF downloaded and loaded into the builder.',
       uploadStep: 'Uploading source PDF...',
       submitStep: 'Submitting export job...',
-      jobFailedFallback: 'You can still download the JSON payload for manual export testing.',
       exportFailed: 'Export failed.',
       jobStillProcessing:
         'Export job is still processing. Open the job page and continue there.',

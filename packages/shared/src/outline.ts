@@ -22,9 +22,12 @@ export const exportOutlineNodeSchema = z.object({
   title: z.string().trim().min(1).max(200),
 })
 
-export const exportRequestSchema = z.object({
+export const exportDraftSchema = z.object({
   document: exportDocumentSchema,
   outline: z.array(exportOutlineNodeSchema).min(1).max(MAX_OUTLINE_NODES),
+})
+
+export const exportRequestSchema = exportDraftSchema.extend({
   sourceBlobUrl: z.string().url(),
 })
 
@@ -35,6 +38,7 @@ export const uploadIntentSchema = z.object({
 })
 
 export type ExportDocument = z.infer<typeof exportDocumentSchema>
+export type ExportDraft = z.infer<typeof exportDraftSchema>
 export type ExportOutlineNode = z.infer<typeof exportOutlineNodeSchema>
 export type ExportRequest = z.infer<typeof exportRequestSchema>
 export type OutlineSource = z.infer<typeof outlineSourceSchema>

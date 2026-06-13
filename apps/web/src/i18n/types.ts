@@ -75,7 +75,6 @@ export interface Dictionary {
       uploadPdf: string
       aiAnalyse: string
       refining: string
-      downloadPayload: string
       exportingLoading: string
       uploading: string
       exportLoad: string
@@ -127,20 +126,6 @@ export interface Dictionary {
       readingTitle: string
       readingDescription: string
     }
-    contract: {
-      title: string
-      description: string
-      openExportedPdf: string
-      openJobDetails: string
-      backendEndpoint: string
-    }
-    payload: {
-      title: string
-      description: string
-      copying: string
-      copy: string
-      save: string
-    }
     empty: {
       eyebrow: string
       title: string
@@ -168,14 +153,11 @@ export interface Dictionary {
       noChildren: string
     }
     export: {
-      copySuccess: string
-      copyFailed: string
       downloading: string
       downloadFailedPrefix: string
       doneReloading: string
       uploadStep: string
       submitStep: string
-      jobFailedFallback: string
       exportFailed: string
       jobStillProcessing: string
       jobFailedGeneric: string

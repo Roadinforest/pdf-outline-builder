@@ -100,7 +100,7 @@ export function JobStatusPage() {
           )}
 
           <div className="mt-8">
-            <Link to="/builder">
+            <Link to="/">
               <Button variant="outline">{dict.jobStatus.backToBuilder}</Button>
             </Link>
           </div>

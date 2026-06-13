@@ -13,7 +13,7 @@ export function NotFoundPage() {
           <h1 className="text-3xl font-semibold text-zinc-950">{dict.notFound.title}</h1>
           <p className="mt-4 text-sm leading-7 text-zinc-600">{dict.notFound.description}</p>
           <div className="mt-8">
-            <Link to="/builder">
+            <Link to="/">
               <Button>{dict.notFound.openBuilder}</Button>
             </Link>
           </div>

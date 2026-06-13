@@ -33,8 +33,7 @@ export function PreviewLayout({ actions, children, title }: PreviewLayoutProps) 
   const location = useLocation()
   const dict = useTranslations()
   const navItems = [
-    { href: '/', label: dict.nav.home },
-    { href: '/builder', label: dict.nav.builder },
+    { href: '/', label: dict.nav.builder },
     { href: '/docs', label: dict.nav.docs },
   ]
 
@@ -51,7 +50,9 @@ export function PreviewLayout({ actions, children, title }: PreviewLayoutProps) 
             </div>
             <nav className="flex flex-wrap gap-2">
               {navItems.map((item) => {
-                const isActive = location.pathname === item.href
+                const isActive = item.href === '/'
+                  ? location.pathname === '/' || location.pathname === '/builder'
+                  : location.pathname === item.href
 
                 return (
                   <Link
