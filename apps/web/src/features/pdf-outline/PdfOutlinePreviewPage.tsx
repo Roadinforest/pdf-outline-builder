@@ -1066,7 +1066,7 @@ export function PdfOutlinePreviewPage() {
               {dict.builder.actions.uploadPdf}
             </Button>
             <Button
-              variant="outline"
+              className="border-rose-800 bg-rose-800 text-white hover:border-rose-700 hover:bg-rose-700"
               onClick={() => void handleRefineOutline()}
               disabled={isRefining || outlineNodes.length === 0}
             >
@@ -1169,16 +1169,12 @@ export function PdfOutlinePreviewPage() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-lg font-semibold text-zinc-950">{dict.builder.editor.title}</h3>
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
-                              hasAiRefinedOutline
-                                ? 'bg-amber-100 text-amber-900 ring-1 ring-amber-200'
-                                : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'
-                            }`}
-                          >
-                            <Info className="size-3.5" />
-                            {dict.builder.editor.aiBadge}
-                          </span>
+                          {hasAiRefinedOutline ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-800 ring-1 ring-rose-200">
+                              <Info className="size-3.5" />
+                              {dict.builder.editor.aiBadge}
+                            </span>
+                          ) : null}
                         </div>
                         <p className="mt-1 text-sm text-zinc-600">{dict.builder.editor.description}</p>
                       </div>

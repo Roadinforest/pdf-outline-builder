@@ -111,7 +111,7 @@ const dictionary: Dictionary = {
     },
     editor: {
       title: '大纲树编辑器',
-      aiBadge: 'AI 版本',
+      aiBadge: '已经经过AI精炼',
       description: '以树形结构直接编辑层级,重排序时会保持整棵子树一起移动。',
       addRoot: '新增根节点',
       detected: '检测结果({count})',

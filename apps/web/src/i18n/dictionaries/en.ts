@@ -116,7 +116,7 @@ const dictionary: Dictionary = {
     },
     editor: {
       title: 'Outline tree editor',
-      aiBadge: 'AI Version',
+      aiBadge: 'AI refined',
       description: 'Edit the hierarchy directly as a tree. Reordering keeps whole branches together.',
       addRoot: 'Add root',
       detected: 'Detected ({count})',
