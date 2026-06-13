@@ -75,24 +75,24 @@ const dictionary: Dictionary = {
   builder: {
     layoutTitle: 'PDF 大纲工作室',
     actions: {
-      uploadPdf: '上传 PDF',
+      uploadPdf: '打开 PDF',
       aiAnalyse: 'AI 精炼',
       refining: '精炼中...',
-      exportingLoading: '导出并加载中...',
-      uploading: '上传中...',
-      exportLoad: '导出并加载 PDF',
+      exportingLoading: '上传、导出并加载中...',
+      uploading: '正在上传源 PDF...',
+      exportLoad: '上传、导出并加载 PDF',
     },
     hero: {
       eyebrow: '浏览器优先',
       title: '本地解析,只导出一次',
       description:
         '该流程把 PDF 阅读、文本提取、大纲推测与人工编辑都留在浏览器内。后端只在需要把书签写回文件时,才会收到上传后的源文件 Blob URL 与通过审核的大纲。',
-      choosePdf: '选择 PDF',
+      choosePdf: '打开 PDF',
       rerun: '重新检测',
     },
     fileBadges: {
       pages: '{count} 页',
-      sourceUploaded: '源文件已上传',
+      sourceUploaded: '源 PDF 已上传',
       job: '任务 #{id}',
     },
     parseErrors: {
@@ -132,10 +132,10 @@ const dictionary: Dictionary = {
     },
     empty: {
       eyebrow: 'MVP 流程',
-      title: '上传一份 PDF 以开始浏览器端处理',
+      title: '打开一份 PDF，开始浏览器端处理',
       description:
         '页面会检查已有书签、使用 PDF.js 提取文本、推断标题结构,并为把书签写回 PDF 的导出服务准备最终的 JSON 请求。',
-      choosePdf: '选择 PDF',
+      choosePdf: '打开 PDF',
       analyzing: '分析中...',
     },
     tree: {

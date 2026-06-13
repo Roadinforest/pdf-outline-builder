@@ -80,24 +80,24 @@ const dictionary: Dictionary = {
   builder: {
     layoutTitle: 'PDF Outline Studio',
     actions: {
-      uploadPdf: 'Upload PDF',
+      uploadPdf: 'Open PDF',
       aiAnalyse: 'AI Analyse',
       refining: 'Refining...',
-      exportingLoading: 'Exporting & Loading...',
-      uploading: 'Uploading...',
-      exportLoad: 'Export & Load PDF',
+      exportingLoading: 'Uploading, Exporting & Loading...',
+      uploading: 'Uploading source PDF...',
+      exportLoad: 'Upload, Export & Load PDF',
     },
     hero: {
       eyebrow: 'Browser First',
       title: 'Parse locally, export only once',
       description:
         'This flow keeps PDF reading, text extraction, outline guessing, and manual edits inside the browser. The backend only receives the uploaded source blob URL plus your approved outline when it is time to write bookmarks back into the file.',
-      choosePdf: 'Choose a PDF',
+      choosePdf: 'Open a PDF',
       rerun: 'Re-run detection',
     },
     fileBadges: {
       pages: '{count} pages',
-      sourceUploaded: 'Source uploaded',
+      sourceUploaded: 'Source PDF uploaded',
       job: 'Job #{id}',
     },
     parseErrors: {
@@ -140,10 +140,10 @@ const dictionary: Dictionary = {
     },
     empty: {
       eyebrow: 'MVP Flow',
-      title: 'Upload a PDF to start a browser-side pass',
+      title: 'Open a PDF to start a browser-side pass',
       description:
         'The page will inspect existing bookmarks, extract text with PDF.js, infer a heading structure, and prepare the final JSON request used by the export service to write bookmarks back into the PDF.',
-      choosePdf: 'Choose a PDF',
+      choosePdf: 'Open a PDF',
       analyzing: 'Analyzing...',
     },
     tree: {
