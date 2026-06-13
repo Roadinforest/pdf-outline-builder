@@ -1066,7 +1066,7 @@ export function PdfOutlinePreviewPage() {
               {dict.builder.actions.uploadPdf}
             </Button>
             <Button
-              className="border-rose-800 bg-rose-800 text-white hover:border-rose-700 hover:bg-rose-700"
+              variant="accent"
               onClick={() => void handleRefineOutline()}
               disabled={isRefining || outlineNodes.length === 0}
             >

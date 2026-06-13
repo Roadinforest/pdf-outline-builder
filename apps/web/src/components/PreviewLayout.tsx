@@ -37,7 +37,13 @@ export function PreviewLayout({ actions, children, title }: PreviewLayoutProps) 
         <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-2">
             <div>
-              <Link to="/" className="text-lg font-semibold tracking-tight text-zinc-950">
+              <Link to="/" className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight text-zinc-950">
+                <img
+                  src="/favicon-rounded.png"
+                  alt=""
+                  className="size-7 rounded-lg"
+                  aria-hidden="true"
+                />
                 {dict.layout.brand}
               </Link>
               <p className="text-sm text-zinc-600">{title}</p>

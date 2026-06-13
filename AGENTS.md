@@ -1,21 +1,18 @@
 <claude-mem-context>
 # Memory Context
 
-# [pdf-outline-builder] recent context, 2026-06-13 11:06pm GMT+8
+# [pdf-outline-builder] recent context, 2026-06-13 11:55pm GMT+8
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (29,831t read) | 0t work
+Stats: 50 obs (28,846t read) | 0t work
 
 ### Jun 6, 2026
-1017 2:43p ✅ Added @langchain/anthropic to support the user's actual MiniMax Anthropic-compatible endpoint
-1018 " 🔄 refineOutline.ts now picks ChatAnthropic vs ChatOpenAI at runtime based on baseURL
 1019 2:44p 🔴 Polymorphic factory lost zod type narrowing; inlined the dispatch in callStructured
 1020 2:46p ✅ Added topP: 0.9 sampling to both LLM clients
 1021 " ✅ topP: 0.9 confirmed typechecks clean across the monorepo
-S887 Add LangChain integration to the PDF outline builder so client-side pdfjs-dist detection results are sent to MiniMax LLM for filtering/cleanup, then returned to the user. Then fix the three runtime bugs the user hit when actually trying to use it: (1) .env not being loaded, (2) wrong LLM client (OpenAI-compatible) for the user's actual MiniMax Anthropic-compatible endpoint, (3) LangChain's default top_p=0 being rejected by MiniMax's strict parameter validation. (Jun 6, 2:46 PM)
 S889 Harden /api/outline/refine response handling against malformed LLM structured output, then await user validation (Jun 6, 2:48 PM)
 1022 2:49p ✅ Defensive post-LLM parsing: handle null/empty outline and per-field type coercion
 1023 " ⚖️ Primary session shifts to autonomous end-to-end testing loop for /api/outline/refine
@@ -43,6 +40,7 @@ S895 Continue autonomous test-and-fix loop on "AI refinement failed: the model d
 S894 Fix live "AI refinement failed: the model did not return a JSON object" production error and add LLM input+output observability to the api project (refineOutlineWithLLM). Continuing the autonomous test-and-fix loop after first live re-test exposed a deeper bug than the 4-tier extractJsonCandidate addressed. (Jun 6, 5:59 PM)
 S893 Fix live production error "AI refinement failed: the model did not return a JSON object" and add LLM input+output observability to the api project (refineOutlineWithLLM endpoint). Originally framed as autonomous test-and-fix loop ("你自己构造一个请求，一直测试 + 调整 ，直到该接口没有问题"). (Jun 6, 5:59 PM)
 S896 Continue autonomous test-and-fix loop on "AI refinement failed: the model did not return a JSON object". The 4-tier extractJsonCandidate was insufficient for live production (Stage 2 response is a serialized LangChain AIMessage whose real outline lives at kwargs.content). Ship the 5th+ tier that handles the AIMessage envelope shape and add a last-resort deep walk as belt-and-suspenders. (Jun 6, 6:16 PM)
+S897 Fix the live "AI refinement failed: the model did not return a JSON object" production error and add LLM input+output observability to the api project (refineOutlineWithLLM). The root cause turned out to be a parse-path bug, not a model-quality issue: MiniMax-M3 was returning a perfectly correct outline, but LangChain's JSON.stringify was serializing the AIMessage into the {lc, type, id, kwargs:{content: "<escaped JSON>"}} envelope and extractJsonCandidate only scanned record.content directly. (Jun 6, 6:19 PM)
 1041 6:19p ✅ New apps/api/src/test-extract.ts unit test + apps/api/src/services/_testableRefine.ts test-bridge duplicating extractor logic
 1043 " ✅ Redundant pnpm typecheck pass after test-extract.ts + _testableRefine.ts added
 1044 " 🔵 End-to-end smoke test 3/3 passed post-upgrade; Chinese fixture correctly preserves 第三章/第四章/第五章 academic headings
@@ -50,7 +48,6 @@ S896 Continue autonomous test-and-fix loop on "AI refinement failed: the model d
 1045 6:22p 🔴 apps/api/tsconfig.json exclude rule extended to keep _testableRefine.ts out of production dist/
 1046 6:24p 🔵 Confirmed: _testableRefine.ts no longer leaks into dist/ after the tsconfig exclude fix
 1047 " ✅ Repeat clean-rebuild verification of tsconfig exclude rule
-S897 Fix the live "AI refinement failed: the model did not return a JSON object" production error and add LLM input+output observability to the api project (refineOutlineWithLLM). The root cause turned out to be a parse-path bug, not a model-quality issue: MiniMax-M3 was returning a perfectly correct outline, but LangChain's JSON.stringify was serializing the AIMessage into the {lc, type, id, kwargs:{content: "<escaped JSON>"}} envelope and extractJsonCandidate only scanned record.content directly. (Jun 6, 6:26 PM)
 1048 6:33p 🔵 LLM refineOutline fails: structured output path null-length crash, JSON-text fallback not parsed
 1049 6:34p 🟣 User requests: load AI-refined outline into Outline tree editor
 1050 6:45p 🔴 refineOutline: unwrap nested-JSON content, balance braces correctly, cap LLM output
@@ -71,4 +68,7 @@ S897 Fix the live "AI refinement failed: the model did not return a JSON object"
 1228 " 🟣 Wired I18nProvider into app root, added LanguageToggle UI to PreviewLayout, and translated HomePage
 1229 11:04p 🟣 Translated DocsPage, NotFoundPage, and JobStatusPage with i18n hooks; cleaned up unused useI18n import
 1230 11:05p 🔄 Added newSection translation key to all three i18n files (en, zh, types) to support new outline node titles
+S933 给 PDF Outline Builder 网站加上中英文翻译,默认英文 (Add Chinese and English translation to the PDF Outline Builder website, with English as default) (Jun 13, 11:06 PM)
+1231 11:07p ✅ User requested X and Xiaohongshu promotion strategy advice
+1232 11:49p 🟣 Request to add website icon next to PDF Outline Builder label
 </claude-mem-context>

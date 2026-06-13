@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from 'react'
 import { forwardRef } from 'react'
 import { cn } from '@/lib/cn'
 
-type ButtonVariant = 'default' | 'outline' | 'destructive'
+type ButtonVariant = 'default' | 'outline' | 'destructive' | 'accent'
 type ButtonSize = 'default' | 'sm' | 'xs' | 'icon-sm'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -11,6 +11,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
+  accent: 'border border-rose-800 bg-rose-800 text-white hover:border-rose-700 hover:bg-rose-700',
   default: 'border border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800 hover:border-zinc-800',
   destructive: 'border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
   outline: 'border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-100',
