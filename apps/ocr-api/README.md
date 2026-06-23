@@ -23,6 +23,12 @@ From the repo root, the same setup is available as:
 pnpm run setup:ocr
 ```
 
+## Vercel notes
+
+`rapidocr-onnxruntime` depends on `opencv-python`, whose normal wheel imports GUI-linked native libraries such as `libxcb`. Vercel's Python runtime does not provide those system libraries, so `build.py` swaps `opencv-python` for `opencv-python-headless` after dependency installation.
+
+If `/` or `/health` returns a Vercel function import error mentioning `cv2` or `libxcb.so.1`, redeploy this service with the current `pyproject.toml`, `build.py`, and `requirements.txt` files.
+
 ## Run
 
 ```bash

@@ -13,7 +13,6 @@ from typing import Iterable
 
 from PIL import Image
 from pypdf import PdfReader
-from rapidocr_onnxruntime import RapidOCR
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfgen import canvas
@@ -201,6 +200,8 @@ def convert_pdf(
     sizes = page_sizes(input_pdf)
     if not sizes:
         raise RuntimeError(f"No pages found in {input_pdf}")
+
+    from rapidocr_onnxruntime import RapidOCR
 
     ocr = RapidOCR()
     temp_context = tempfile.TemporaryDirectory(prefix="ocr-pdf-")
