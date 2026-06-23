@@ -82,6 +82,7 @@ const dictionary: Dictionary = {
     actions: {
       uploadPdf: 'Open PDF',
       ocrPdf: 'OCR PDF',
+      ocrUnavailable: 'OCR is temporarily unavailable',
       ocring: 'Running OCR...',
       aiAnalyse: 'AI Analyse',
       refining: 'Refining...',

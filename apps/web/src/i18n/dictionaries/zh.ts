@@ -77,6 +77,7 @@ const dictionary: Dictionary = {
     actions: {
       uploadPdf: '打开 PDF',
       ocrPdf: 'OCR PDF',
+      ocrUnavailable: 'OCR 暂不可用',
       ocring: 'OCR 转换中...',
       aiAnalyse: 'AI 精炼',
       refining: '精炼中...',

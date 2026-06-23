@@ -402,6 +402,8 @@ function getIndentLabel(dict: Dictionary, level: number) {
 
 type NotificationTone = 'success' | 'error'
 
+const isOcrFeatureEnabled = false
+
 function OutlineTreeBranch({
   collapsedNodeIds,
   expandedNodeIds,
@@ -1171,7 +1173,8 @@ export function PdfOutlinePreviewPage() {
             <Button
               variant="outline"
               onClick={() => selectedFile ? void handleOcrConversion(selectedFile) : ocrFileInputRef.current?.click()}
-              disabled={isParsing || isRefining || isOcrConverting}
+              disabled={!isOcrFeatureEnabled || isParsing || isRefining || isOcrConverting}
+              title={isOcrFeatureEnabled ? undefined : dict.builder.actions.ocrUnavailable}
             >
               <FileText className={isOcrConverting ? 'animate-pulse' : undefined} />
               {isOcrConverting ? dict.builder.actions.ocring : dict.builder.actions.ocrPdf}

@@ -74,6 +74,7 @@ export interface Dictionary {
     actions: {
       uploadPdf: string
       ocrPdf: string
+      ocrUnavailable: string
       ocring: string
       aiAnalyse: string
       refining: string
