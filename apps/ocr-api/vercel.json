@@ -1,9 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "app.py": {
+    "api/index.py": {
       "maxDuration": 60,
-      "excludeFiles": "{__pycache__/**,*.pyc,*.pdf,.venv/**}"
+      "excludeFiles": "{__pycache__/**,**/__pycache__/**,*.pyc,**/*.pyc,*.pdf,**/*.pdf,.venv/**}"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.py"
+    }
+  ]
 }
