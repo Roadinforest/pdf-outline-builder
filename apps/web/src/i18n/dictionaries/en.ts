@@ -81,6 +81,8 @@ const dictionary: Dictionary = {
     layoutTitle: 'PDF Outline Studio',
     actions: {
       uploadPdf: 'Open PDF',
+      ocrPdf: 'OCR PDF',
+      ocring: 'Running OCR...',
       aiAnalyse: 'AI Analyse',
       refining: 'Refining...',
       exportingLoading: 'Uploading, Exporting & Loading...',
@@ -176,6 +178,15 @@ const dictionary: Dictionary = {
         'Export job is still processing. Open the job page and continue there.',
       jobFailedGeneric: 'Export job failed.',
       missingDownload: 'Export finished without a downloadable PDF.',
+    },
+    ocr: {
+      converting: 'Converting the PDF with OCR and adding a searchable text layer...',
+      converted: 'OCR PDF converted and loaded into the builder.',
+      failed: 'OCR conversion failed.',
+      blockedTitle: 'OCR is converting the PDF',
+      blockedDescription:
+        'Rendering pages, recognizing text, and writing a searchable text layer. This may take a while for large scanned PDFs.',
+      blockedHint: 'Please wait',
     },
     refine: {
       refining: 'Asking the LLM to filter and clean the outline...',

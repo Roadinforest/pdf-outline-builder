@@ -76,6 +76,8 @@ const dictionary: Dictionary = {
     layoutTitle: 'PDF 大纲工作室',
     actions: {
       uploadPdf: '打开 PDF',
+      ocrPdf: 'OCR PDF',
+      ocring: 'OCR 转换中...',
       aiAnalyse: 'AI 精炼',
       refining: '精炼中...',
       exportingLoading: '上传、导出并加载中...',
@@ -167,6 +169,15 @@ const dictionary: Dictionary = {
       jobStillProcessing: '导出任务仍在进行中。请打开任务页面继续查看。',
       jobFailedGeneric: '导出任务失败。',
       missingDownload: '导出已完成,但未提供可下载的 PDF。',
+    },
+    ocr: {
+      converting: '正在通过 OCR 转换 PDF,并写入可搜索的文字层...',
+      converted: 'OCR PDF 已转换完成,并加载到编辑器。',
+      failed: 'OCR 转换失败。',
+      blockedTitle: '正在 OCR 转换 PDF',
+      blockedDescription:
+        '正在渲染页面、识别文字并写入可搜索的文字层。较大的扫描版 PDF 可能需要一些时间。',
+      blockedHint: '请稍候',
     },
     refine: {
       refining: '正在请求 LLM 过滤并清洗大纲...',

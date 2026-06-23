@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  FileText,
   Info,
   FileUp,
   Plus,
@@ -23,7 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { PreviewLayout } from '@/components/PreviewLayout'
 import { useI18n, useTranslations, type Dictionary } from '@/i18n'
-import { apiUrl, postJson, readJsonOrThrow } from '@/lib/api'
+import { apiUrl, ocrApiUrl, postJson, readJsonOrThrow } from '@/lib/api'
 import { uploadSourcePdf } from '@/lib/blobUpload'
 import { parsePdfOutline, type ParsedPdfDocument, type PdfOutlineNode } from './pdfOutline'
 
@@ -253,6 +254,35 @@ function deriveOutputFilename(fileName: string) {
 
   const baseName = fileName.slice(0, extensionIndex)
   return `${baseName}-outlined.pdf`
+}
+
+function deriveOcrFilename(fileName: string) {
+  const extensionIndex = fileName.lastIndexOf('.')
+
+  if (extensionIndex === -1) {
+    return `${fileName}-ocr.pdf`
+  }
+
+  const baseName = fileName.slice(0, extensionIndex)
+  return `${baseName}-ocr.pdf`
+}
+
+async function readOcrError(response: Response) {
+  try {
+    const body = await response.json() as { detail?: unknown; error?: unknown }
+
+    if (typeof body.detail === 'string') {
+      return body.detail
+    }
+
+    if (typeof body.error === 'string') {
+      return body.error
+    }
+  } catch {
+    // Fall through to the generic status message.
+  }
+
+  return `OCR request failed with status ${response.status}.`
 }
 
 function wait(durationMs: number) {
@@ -561,6 +591,7 @@ export function PdfOutlinePreviewPage() {
   const dict = useTranslations()
   const { t } = useI18n()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const ocrFileInputRef = useRef<HTMLInputElement | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentUrl, setDocumentUrl] = useState('')
   const [parsedDocument, setParsedDocument] = useState<ParsedPdfDocument | null>(null)
@@ -574,6 +605,7 @@ export function PdfOutlinePreviewPage() {
   const [exportMessage, setExportMessage] = useState('')
   const [isExporting, setIsExporting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isOcrConverting, setIsOcrConverting] = useState(false)
   const [isRefining, setIsRefining] = useState(false)
   const [hasAiRefinedOutline, setHasAiRefinedOutline] = useState(false)
   const [notification, setNotification] = useState<{ message: string; title: string; tone: NotificationTone } | null>(null)
@@ -678,6 +710,7 @@ export function PdfOutlinePreviewPage() {
       setNotification(null)
       setDetectedOutlineNodes(nextDetectedNodes)
       applyPresetState(nextPreset, parsed, nextDetectedNodes)
+      return true
     } catch (error) {
       setParseError(error instanceof Error ? error.message : dict.builder.parseErrors.default)
       setParsedDocument(null)
@@ -687,6 +720,7 @@ export function PdfOutlinePreviewPage() {
       setOutlineNodes([])
       setSourceBlobUrl('')
       resetTreeUiState()
+      return false
     } finally {
       setIsParsing(false)
     }
@@ -708,6 +742,66 @@ export function PdfOutlinePreviewPage() {
     }
 
     await loadFile(file)
+    event.target.value = ''
+  }
+
+  async function convertPdfWithOcr(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('dpi', '160')
+    formData.append('min_confidence', '0.35')
+    formData.append('image_format', 'jpeg')
+    formData.append('jpeg_quality', '90')
+
+    const response = await fetch(ocrApiUrl('/api/convert'), {
+      body: formData,
+      method: 'POST',
+    })
+
+    if (!response.ok) {
+      throw new Error(await readOcrError(response))
+    }
+
+    const pdfBlob = await response.blob()
+    return new File([pdfBlob], deriveOcrFilename(file.name), {
+      type: 'application/pdf',
+    })
+  }
+
+  async function handleOcrConversion(file: File) {
+    setIsOcrConverting(true)
+    setParseError('')
+    setExportMessage(dict.builder.ocr.converting)
+    setNotification(null)
+
+    try {
+      const convertedFile = await convertPdfWithOcr(file)
+      setIsOcrConverting(false)
+
+      const loaded = await loadFile(convertedFile)
+      if (loaded) {
+        setExportMessage(dict.builder.ocr.converted)
+      }
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : dict.builder.ocr.failed)
+      setNotification({
+        message: error instanceof Error ? error.message : dict.builder.ocr.failed,
+        title: dict.builder.ocr.failed,
+        tone: 'error',
+      })
+    } finally {
+      setIsOcrConverting(false)
+    }
+  }
+
+  async function handleOcrFileSelection(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    await handleOcrConversion(file)
     event.target.value = ''
   }
 
@@ -911,8 +1005,10 @@ export function PdfOutlinePreviewPage() {
       type: 'application/pdf',
     })
 
-    await loadFile(outlinedFile)
-    setExportMessage(dict.builder.export.doneReloading)
+    const loaded = await loadFile(outlinedFile)
+    if (loaded) {
+      setExportMessage(dict.builder.export.doneReloading)
+    }
   }
 
   async function handleRefineOutline() {
@@ -1061,19 +1157,34 @@ export function PdfOutlinePreviewPage() {
               className="hidden"
               onChange={handleFileSelection}
             />
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isRefining}>
+            <input
+              ref={ocrFileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={handleOcrFileSelection}
+            />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isRefining || isOcrConverting}>
               <FileUp />
               {dict.builder.actions.uploadPdf}
             </Button>
             <Button
+              variant="outline"
+              onClick={() => selectedFile ? void handleOcrConversion(selectedFile) : ocrFileInputRef.current?.click()}
+              disabled={isParsing || isRefining || isOcrConverting}
+            >
+              <FileText className={isOcrConverting ? 'animate-pulse' : undefined} />
+              {isOcrConverting ? dict.builder.actions.ocring : dict.builder.actions.ocrPdf}
+            </Button>
+            <Button
               variant="accent"
               onClick={() => void handleRefineOutline()}
-              disabled={isRefining || outlineNodes.length === 0}
+              disabled={isRefining || isOcrConverting || outlineNodes.length === 0}
             >
               <Sparkles className={isRefining ? 'animate-pulse' : undefined} />
               {isRefining ? dict.builder.actions.refining : dict.builder.actions.aiAnalyse}
             </Button>
-            <Button onClick={handleExport} disabled={!exportDraft || isExporting || isUploading || isRefining}>
+            <Button onClick={handleExport} disabled={!exportDraft || isExporting || isUploading || isRefining || isOcrConverting}>
               <Send />
               {isUploading
                 ? dict.builder.actions.uploading
@@ -1084,7 +1195,7 @@ export function PdfOutlinePreviewPage() {
           </>
         }
       >
-        <div className="h-full overflow-auto px-6 py-6" aria-busy={isRefining}>
+        <div className="h-full overflow-auto px-6 py-6" aria-busy={isRefining || isOcrConverting}>
         <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
           {selectedFile || parseError || exportMessage ? (
             <section className="rounded-[32px] border border-zinc-200/70 bg-white/85 p-6 shadow-sm backdrop-blur-sm">
@@ -1111,8 +1222,8 @@ export function PdfOutlinePreviewPage() {
                   </Link>
                 ) : null}
                 {selectedFile ? (
-                  <Button variant="outline" onClick={() => void loadFile(selectedFile)} disabled={isParsing || isRefining}>
-                    <RefreshCw className={isParsing || isRefining ? 'animate-spin' : undefined} />
+                  <Button variant="outline" onClick={() => void loadFile(selectedFile)} disabled={isParsing || isRefining || isOcrConverting}>
+                    <RefreshCw className={isParsing || isRefining || isOcrConverting ? 'animate-spin' : undefined} />
                     {dict.builder.hero.rerun}
                   </Button>
                 ) : null}
@@ -1178,7 +1289,7 @@ export function PdfOutlinePreviewPage() {
                         </div>
                         <p className="mt-1 text-sm text-zinc-600">{dict.builder.editor.description}</p>
                       </div>
-                      <Button variant="outline" onClick={addRootNode}>
+                      <Button variant="outline" onClick={addRootNode} disabled={isOcrConverting || isRefining}>
                         <Plus />
                         {dict.builder.editor.addRoot}
                       </Button>
@@ -1188,6 +1299,7 @@ export function PdfOutlinePreviewPage() {
                         variant={activePreset === 'detected' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => applyPreset('detected')}
+                        disabled={isOcrConverting || isRefining}
                       >
                         <Sparkles />
                         {t(dict.builder.editor.detected, { count: detectedOutlineNodes.length })}
@@ -1196,7 +1308,7 @@ export function PdfOutlinePreviewPage() {
                         variant={activePreset === 'embedded' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => applyPreset('embedded')}
-                        disabled={parsedDocument.embeddedOutline.length === 0}
+                        disabled={parsedDocument.embeddedOutline.length === 0 || isOcrConverting || isRefining}
                       >
                         {t(dict.builder.editor.embedded, { count: parsedDocument.embeddedOutline.length })}
                       </Button>
@@ -1204,15 +1316,16 @@ export function PdfOutlinePreviewPage() {
                         variant={activePreset === 'merged' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => applyPreset('merged')}
+                        disabled={isOcrConverting || isRefining}
                       >
                         {t(dict.builder.editor.merged, { count: mergedOutlineCount })}
                       </Button>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button variant="outline" size="sm" onClick={expandAllNodes}>
+                      <Button variant="outline" size="sm" onClick={expandAllNodes} disabled={isOcrConverting || isRefining}>
                         {dict.builder.editor.expandAll}
                       </Button>
-                      <Button variant="outline" size="sm" onClick={collapseAllNodes}>
+                      <Button variant="outline" size="sm" onClick={collapseAllNodes} disabled={isOcrConverting || isRefining}>
                         {dict.builder.editor.collapseAll}
                       </Button>
                     </div>
@@ -1272,7 +1385,7 @@ export function PdfOutlinePreviewPage() {
               <h2 className="mt-2 text-2xl font-semibold text-zinc-950">{dict.builder.empty.title}</h2>
               <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-zinc-600">{dict.builder.empty.description}</p>
               <div className="mt-6 flex justify-center">
-                <Button onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
+                <Button onClick={() => fileInputRef.current?.click()} disabled={isParsing || isOcrConverting}>
                   <FileUp />
                   {isParsing ? dict.builder.empty.analyzing : dict.builder.empty.choosePdf}
                 </Button>
@@ -1293,6 +1406,13 @@ export function PdfOutlinePreviewPage() {
           title={dict.builder.refine.blockedTitle}
           description={dict.builder.refine.blockedDescription}
           hint={dict.builder.refine.blockedHint}
+        />
+      ) : null}
+      {isOcrConverting ? (
+        <BlockingOverlay
+          title={dict.builder.ocr.blockedTitle}
+          description={dict.builder.ocr.blockedDescription}
+          hint={dict.builder.ocr.blockedHint}
         />
       ) : null}
       {notification ? (

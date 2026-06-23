@@ -1,0 +1,7 @@
+rapidocr-onnxruntime==1.2.3
+reportlab==5.0.0
+pillow==12.2.0
+pypdf==6.14.0
+fastapi==0.138.0
+uvicorn==0.49.0
+python-multipart==0.0.32

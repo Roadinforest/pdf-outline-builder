@@ -73,6 +73,8 @@ export interface Dictionary {
     layoutTitle: string
     actions: {
       uploadPdf: string
+      ocrPdf: string
+      ocring: string
       aiAnalyse: string
       refining: string
       exportingLoading: string
@@ -162,6 +164,14 @@ export interface Dictionary {
       jobStillProcessing: string
       jobFailedGeneric: string
       missingDownload: string
+    }
+    ocr: {
+      converting: string
+      converted: string
+      failed: string
+      blockedTitle: string
+      blockedDescription: string
+      blockedHint: string
     }
     refine: {
       refining: string

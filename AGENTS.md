@@ -1,19 +1,17 @@
 <claude-mem-context>
 # Memory Context
 
-# [pdf-outline-builder] recent context, 2026-06-14 12:08am GMT+8
+# [pdf-outline-builder] recent context, 2026-06-14 4:23pm GMT+8
 
 Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
 Format: ID TIME TYPE TITLE
 Fetch details: get_observations([IDs]) | Search: mem-search skill
 
-Stats: 50 obs (28,846t read) | 0t work
+Stats: 50 obs (28,230t read) | 0t work
 
 ### Jun 6, 2026
-1019 2:44p 🔴 Polymorphic factory lost zod type narrowing; inlined the dispatch in callStructured
 1020 2:46p ✅ Added topP: 0.9 sampling to both LLM clients
 1021 " ✅ topP: 0.9 confirmed typechecks clean across the monorepo
-S889 Harden /api/outline/refine response handling against malformed LLM structured output, then await user validation (Jun 6, 2:48 PM)
 1022 2:49p ✅ Defensive post-LLM parsing: handle null/empty outline and per-field type coercion
 1023 " ⚖️ Primary session shifts to autonomous end-to-end testing loop for /api/outline/refine
 S890 Primary session built a standalone test harness (apps/api/src/test-refine.ts) to drive the autonomous refineOutline test-and-fix loop (Jun 6, 2:49 PM)
@@ -48,6 +46,7 @@ S897 Fix the live "AI refinement failed: the model did not return a JSON object"
 1045 6:22p 🔴 apps/api/tsconfig.json exclude rule extended to keep _testableRefine.ts out of production dist/
 1046 6:24p 🔵 Confirmed: _testableRefine.ts no longer leaks into dist/ after the tsconfig exclude fix
 1047 " ✅ Repeat clean-rebuild verification of tsconfig exclude rule
+S933 给 PDF Outline Builder 网站加上中英文翻译,默认英文 (Add Chinese and English translation to the PDF Outline Builder website, with English as default) (Jun 6, 6:26 PM)
 1048 6:33p 🔵 LLM refineOutline fails: structured output path null-length crash, JSON-text fallback not parsed
 1049 6:34p 🟣 User requests: load AI-refined outline into Outline tree editor
 1050 6:45p 🔴 refineOutline: unwrap nested-JSON content, balance braces correctly, cap LLM output
@@ -68,7 +67,16 @@ S897 Fix the live "AI refinement failed: the model did not return a JSON object"
 1228 " 🟣 Wired I18nProvider into app root, added LanguageToggle UI to PreviewLayout, and translated HomePage
 1229 11:04p 🟣 Translated DocsPage, NotFoundPage, and JobStatusPage with i18n hooks; cleaned up unused useI18n import
 1230 11:05p 🔄 Added newSection translation key to all three i18n files (en, zh, types) to support new outline node titles
-S933 给 PDF Outline Builder 网站加上中英文翻译,默认英文 (Add Chinese and English translation to the PDF Outline Builder website, with English as default) (Jun 13, 11:06 PM)
 1231 11:07p ✅ User requested X and Xiaohongshu promotion strategy advice
 1232 11:49p 🟣 Request to add website icon next to PDF Outline Builder label
+### Jun 14, 2026
+1248 12:08a ✅ User requested default project language to be English
+S938 User asked Codex (in Chinese) "让这个项目默认英文" — make the PDF Outline Builder web app default to English. Active file was PdfOutlinePreviewPage.tsx. (Jun 14, 4:23 PM)
+**Investigated**: Codex grepped for upload/choose-PDF strings across apps/web/src and apps/web/public, then read both i18n dictionaries (en.ts and zh.ts) plus the i18n types and I18nContext, and apps/web/index.html to understand how locale is selected.
+
+**Learned**: Project has a custom React i18n system in apps/web/src/i18n/: types.ts defines `DEFAULT_LOCALE = 'en'` and `SUPPORTED_LOCALES = ['en','zh']`; I18nContext.tsx's `readInitialLocale()` falls back to localStorage, then auto-switches to 'zh' when `navigator.language` starts with 'zh', otherwise returns DEFAULT_LOCALE. index.html already declares lang="en". So the "default English" bug is specifically the browser-language auto-detect overriding the stored/default value on Chinese-locale browsers.
+
+**Completed**: Updated English and Chinese dictionary copy to use clearer "Open PDF" wording (en) / "打开 PDF" (zh) instead of "Upload/Choose/上传/选择" across builder.actions.uploadPdf, builder.actions.exportingLoading, builder.actions.uploading, builder.actions.exportLoad, builder.hero.choosePdf, builder.fileBadges.sourceUploaded, builder.empty.title, and builder.empty.choosePdf. typecheck ran successfully (tsc passed, exit 0). The default-locale default itself is already 'en'.
+
+**Next Steps**: Remove the `navigator.language.startsWith('zh')` branch from `readInitialLocale()` in apps/web/src/i18n/I18nContext.tsx so the app honors DEFAULT_LOCALE ('en') whenever no localStorage entry is set. Re-run typecheck and verify the locale toggle still works via the existing toggleLocale flow.
 </claude-mem-context>

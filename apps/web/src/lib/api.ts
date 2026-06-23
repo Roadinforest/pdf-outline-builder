@@ -1,13 +1,24 @@
 const localApiBaseUrl = 'http://localhost:8787'
+const localOcrApiBaseUrl = 'http://localhost:8000'
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+const configuredOcrApiBaseUrl = import.meta.env.VITE_OCR_API_BASE_URL?.trim()
 
 export const apiBaseUrl = configuredApiBaseUrl && configuredApiBaseUrl.length > 0
   ? configuredApiBaseUrl.replace(/\/+$/, '')
   : localApiBaseUrl
 
+export const ocrApiBaseUrl = configuredOcrApiBaseUrl && configuredOcrApiBaseUrl.length > 0
+  ? configuredOcrApiBaseUrl.replace(/\/+$/, '')
+  : localOcrApiBaseUrl
+
 export function apiUrl(pathname: string) {
   const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`
   return `${apiBaseUrl}${normalizedPath}`
+}
+
+export function ocrApiUrl(pathname: string) {
+  const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`
+  return `${ocrApiBaseUrl}${normalizedPath}`
 }
 
 export async function readJsonOrThrow<T>(response: Response): Promise<T> {
@@ -41,4 +52,3 @@ export async function postJson<TRequest, TResponse>(pathname: string, payload: T
 
   return readJsonOrThrow<TResponse>(response)
 }
-
