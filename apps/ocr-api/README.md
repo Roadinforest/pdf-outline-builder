@@ -31,6 +31,16 @@ The repository root and this app both include `.python-version` with `3.12`, whi
 
 If `/` or `/health` returns a Vercel function import error mentioning `cv2` or `libxcb.so.1`, redeploy this service with the current `pyproject.toml`, `build.py`, and `requirements.txt` files.
 
+For the Vercel project settings, use these overrides:
+
+```bash
+# Install Command
+python3.12 -m venv .vercel-python && . .vercel-python/bin/activate && python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+
+# Build Command
+. .vercel-python/bin/activate && python build.py
+```
+
 ## Run
 
 ```bash
