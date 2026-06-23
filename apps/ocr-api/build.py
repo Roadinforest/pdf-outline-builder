@@ -38,7 +38,9 @@ def run(args: list[str]) -> None:
 
 def main() -> None:
     ensure_venv_python()
-    (ROOT_DIR / "public").mkdir(exist_ok=True)
+    public_dir = ROOT_DIR / "public"
+    public_dir.mkdir(exist_ok=True)
+    (public_dir / ".vercel-placeholder").write_text("FastAPI deployment artifact\n")
     run(["uninstall", "-y", "opencv-python", "opencv-contrib-python", "opencv-contrib-python-headless", "opencv-python-headless"])
     run(["install", "--no-cache-dir", "--force-reinstall", "opencv-python-headless==4.13.0.92"])
     run(["list"])
