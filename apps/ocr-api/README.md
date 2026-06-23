@@ -25,6 +25,8 @@ pnpm run setup:ocr
 
 ## Vercel notes
 
+The repository root also includes `.python-version` with `3.12` because Vercel may resolve the Python version from the monorepo root before entering `apps/ocr-api`. `onnxruntime` currently does not publish wheels for every newest Python ABI immediately, so pinning away from Python 3.14 avoids unsatisfiable `cp314` installs.
+
 `rapidocr-onnxruntime` depends on `opencv-python`, whose normal wheel imports GUI-linked native libraries such as `libxcb`. Vercel's Python runtime does not provide those system libraries, so `build.py` swaps `opencv-python` for `opencv-python-headless` after dependency installation.
 
 If `/` or `/health` returns a Vercel function import error mentioning `cv2` or `libxcb.so.1`, redeploy this service with the current `pyproject.toml`, `build.py`, and `requirements.txt` files.
