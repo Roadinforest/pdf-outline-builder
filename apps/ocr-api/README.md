@@ -25,7 +25,7 @@ pnpm run setup:ocr
 
 ## Vercel notes
 
-The repository root and this app both include `.python-version` with `3.12`, and `pyproject.toml` also declares `requires-python = "==3.12.*"`. Vercel may resolve the Python version from different files depending on whether it uses `requirements.txt` or `uv` project mode. `onnxruntime` currently does not publish wheels for every newest Python ABI immediately, so pinning away from Python 3.14 avoids unsatisfiable `cp314` installs.
+The repository root and this app both include `.python-version` with `3.12`, while `pyproject.toml` allows Python `>=3.12,<3.13`. Vercel may resolve the Python version from different files depending on whether it uses `requirements.txt` or `uv` project mode. OCR dependencies such as `pyclipper` do not support Python 3.14, so this service must build with Python 3.12.
 
 `rapidocr-onnxruntime` depends on `opencv-python`, whose normal wheel imports GUI-linked native libraries such as `libxcb`. Vercel's Python runtime does not provide those system libraries, so `build.py` swaps `opencv-python` for `opencv-python-headless` after dependency installation.
 
