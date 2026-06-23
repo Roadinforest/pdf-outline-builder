@@ -41,6 +41,8 @@ python3.12 -m venv .vercel-python && . .vercel-python/bin/activate && python -m 
 . .vercel-python/bin/activate && python build.py
 ```
 
+Leave Output Directory empty in the Vercel dashboard. If Vercel still expects `public`, `build.py` creates an empty `public/` directory as a deployment artifact while `vercel.json` rewrites all routes to the FastAPI function.
+
 ## Run
 
 ```bash

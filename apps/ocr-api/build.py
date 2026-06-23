@@ -38,6 +38,7 @@ def run(args: list[str]) -> None:
 
 def main() -> None:
     ensure_venv_python()
+    (ROOT_DIR / "public").mkdir(exist_ok=True)
     run(["uninstall", "-y", "opencv-python", "opencv-contrib-python", "opencv-contrib-python-headless", "opencv-python-headless"])
     run(["install", "--no-cache-dir", "--force-reinstall", "opencv-python-headless==4.13.0.92"])
     run(["list"])
